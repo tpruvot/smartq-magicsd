@@ -57,7 +57,7 @@ TODO: Homerun NIC and longrun NIC are not functional, only internal at the
 #define DM9802_NOISE_FLOOR	0x05
 
 /* #define CONFIG_DM9000_DEBUG */
-
+//#define CONFIG_DM9000_DEBUG
 #ifdef CONFIG_DM9000_DEBUG
 #define DM9000_DBG(fmt,args...) printf(fmt ,##args)
 #else				/*  */
@@ -70,6 +70,7 @@ enum DM9000_PHY_mode { DM9000_10MHD = 0, DM9000_100MHD =
 enum DM9000_NIC_TYPE { FASTETHER_NIC = 0, HOMERUN_NIC = 1, LONGRUN_NIC = 2
 };
 
+u16 default_enetaddr[6] = { 0x00, 0x22, 0x12, 0x34, 0x56, 0x90 };  //bxl@hhtech add
 /* Structure/enum declaration ------------------------------- */
 typedef struct board_info {
 	u32 runt_length_counter;	/* counter: RX length < 64byte */
@@ -112,22 +113,27 @@ static void DM9000_iow(int reg, u8 value);
 #define DM9000_inw(r) (*(volatile u16 *)r)
 #define DM9000_inl(r) (*(volatile u32 *)r)
 
-#ifdef CONFIG_DM9000_DEBUG
+//#ifdef CONFIG_DM9000_DEBUG
+#if 1
 static void
 dump_regs(void)
 {
-	DM9000_DBG("\n");
-	DM9000_DBG("NCR   (0x00): %02x\n", DM9000_ior(0));
-	DM9000_DBG("NSR   (0x01): %02x\n", DM9000_ior(1));
-	DM9000_DBG("TCR   (0x02): %02x\n", DM9000_ior(2));
-	DM9000_DBG("TSRI  (0x03): %02x\n", DM9000_ior(3));
-	DM9000_DBG("TSRII (0x04): %02x\n", DM9000_ior(4));
-	DM9000_DBG("RCR   (0x05): %02x\n", DM9000_ior(5));
-	DM9000_DBG("RSR   (0x06): %02x\n", DM9000_ior(6));
-	DM9000_DBG("ISR   (0xFE): %02x\n", DM9000_ior(ISR));
-	DM9000_DBG("\n");
+	printf("\n");
+	printf("NCR   (0x00): %02x\n", DM9000_ior(0));
+	printf("NSR   (0x01): %02x\n", DM9000_ior(1));
+	printf("TCR   (0x02): %02x\n", DM9000_ior(2));
+	printf("TSRI  (0x03): %02x\n", DM9000_ior(3));
+	printf("TSRII (0x04): %02x\n", DM9000_ior(4));
+	printf("RCR   (0x05): %02x\n", DM9000_ior(5));
+	printf("RSR   (0x06): %02x\n", DM9000_ior(6));
+	printf("GPCR  (0x1E): %02x\n", DM9000_ior(0x1e));
+	printf("GPR   (0x1F): %02x\n", DM9000_ior(0x1f));
+	printf("LPCR  (0x34): %02x\n", DM9000_ior(0x34));
+	printf("ISR   (0xFE): %02x\n", DM9000_ior(0xfe));
+	printf("\n");
 }
-#endif				/*  */
+#endif
+//#endif				/*  */
 
 /*
   Search DM9000 board, allocate space and register it
@@ -136,10 +142,12 @@ int
 dm9000_probe(void)
 {
 	u32 id_val;
+	
 	id_val = DM9000_ior(DM9000_VIDL);
 	id_val |= DM9000_ior(DM9000_VIDH) << 8;
 	id_val |= DM9000_ior(DM9000_PIDL) << 16;
 	id_val |= DM9000_ior(DM9000_PIDH) << 24;
+	
 	if (id_val == DM9000_ID) {
 		printf("dm9000 i/o: 0x%x, id: 0x%x \n", CONFIG_DM9000_BASE,
 		       id_val);
@@ -275,7 +283,7 @@ eth_init(bd_t * bd)
 {
 	int i, oft, lnk;
 	DM9000_DBG("eth_init()\n");
-
+	
 	/* RESET device */
 	dm9000_reset();
 	dm9000_probe();
@@ -284,6 +292,7 @@ eth_init(bd_t * bd)
 	identify_nic();
 
 	/* GPIO0 on pre-activate PHY */
+	//bxl@hhtech ,don't need
 	DM9000_iow(DM9000_GPR, 0x00);	/*REG_1F bit0 activate phyxcer */
 
 	/* Set PHY */
@@ -294,21 +303,22 @@ eth_init(bd_t * bd)
 	DM9000_iow(DM9000_TCR, 0);	/* TX Polling clear */
 	DM9000_iow(DM9000_BPTR, 0x3f);	/* Less 3Kb, 200us */
 	DM9000_iow(DM9000_FCTR, FCTR_HWOT(3) | FCTR_LWOT(8));	/* Flow Control : High/Low Water */
-	DM9000_iow(DM9000_FCR, 0x0);	/* SH FIXME: This looks strange! Flow Control */
+	DM9000_iow(DM9000_FCR, 0x08);	/* SH FIXME: This looks strange! Flow Control */
 	DM9000_iow(DM9000_SMCR, 0);	/* Special Mode */
 	DM9000_iow(DM9000_NSR, NSR_WAKEST | NSR_TX2END | NSR_TX1END);	/* clear TX status */
 	DM9000_iow(DM9000_ISR, 0x0f);	/* Clear interrupt status */
 
 	/* Set Node address */
-	for (i = 0; i < 6; i++)
-		((u16 *) bd->bi_enetaddr)[i] = read_srom_word(i);
+	for (i = 0; i < 6; i++) 
+		bd->bi_enetaddr[i] = default_enetaddr[i];	//bxl@hhtech
+	
 	printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", bd->bi_enetaddr[0],
 	       bd->bi_enetaddr[1], bd->bi_enetaddr[2], bd->bi_enetaddr[3],
 	       bd->bi_enetaddr[4], bd->bi_enetaddr[5]);
 	for (i = 0, oft = 0x10; i < 6; i++, oft++)
 		DM9000_iow(oft, bd->bi_enetaddr[i]);
 	for (i = 0, oft = 0x16; i < 8; i++, oft++)
-		DM9000_iow(oft, 0xff);
+		DM9000_iow(oft, 0x00);	    //bxl@hhtech
 
 	/* read back mac, just to be sure */
 	for (i = 0, oft = 0x10; i < 6; i++, oft++)
@@ -318,6 +328,7 @@ eth_init(bd_t * bd)
 	/* Activate DM9000 */
 	DM9000_iow(DM9000_RCR, RCR_DIS_LONG | RCR_DIS_CRC | RCR_RXEN);	/* RX enable */
 	DM9000_iow(DM9000_IMR, IMR_PAR);	/* Enable TX/RX interrupt mask */
+#if 1	    //bxl@hhtech
 	i = 0;
 	while (!(phy_read(1) & 0x20)) {	/* autonegation complete bit */
 		udelay(1000);
@@ -349,6 +360,7 @@ eth_init(bd_t * bd)
 		break;
 	}
 	printf("mode\n");
+#endif
 	return 0;
 }
 
@@ -362,13 +374,16 @@ eth_send(volatile void *packet, int length)
 	char *data_ptr;
 	u32 tmplen, i;
 	int tmo;
-	DM9000_DBG("eth_send: length: %d\n", length);
+//	printf("eth_send: length: %d ", length);
+	DM9000_iow(DM9000_GPR, 0x00);	//test
+//	dump_regs();
 	for (i = 0; i < length; i++) {
 		if (i % 8 == 0)
 			DM9000_DBG("\nSend: 02x: ", i);
 		DM9000_DBG("%02x ", ((unsigned char *) packet)[i]);
 	} DM9000_DBG("\n");
 
+	DM9000_iow(DM9000_IMR, IMR_PAR);    //bxl@hhtech add
 	/* Move data to DM9000 TX RAM */
 	data_ptr = (char *) packet;
 	DM9000_outb(DM9000_MWCMD, DM9000_IO);
@@ -381,7 +396,7 @@ eth_send(volatile void *packet, int length)
 #endif				/*  */
 #ifdef CONFIG_DM9000_USE_16BIT
 	tmplen = (length + 1) / 2;
-	for (i = 0; i < tmplen; i++)
+	for (i = 0; i < tmplen; i++) 
 		DM9000_outw(((u16 *) data_ptr)[i], DM9000_DATA);
 
 #endif				/*  */
@@ -407,7 +422,7 @@ eth_send(volatile void *packet, int length)
 			break;
 		}
 	}
-	DM9000_DBG("transmit done\n\n");
+//	printf(" done\n");
 	return 0;
 }
 
@@ -415,6 +430,14 @@ eth_send(volatile void *packet, int length)
   Stop the interface.
   The interface is stopped when it is brought.
 */
+//bxl@hhtech add
+void dm9000_get_enetaddr (uchar * addr)
+{
+	int i;
+	for (i=0; i<6; i++)
+		addr[i] = default_enetaddr[i];
+}
+//add end
 void
 eth_halt(void)
 {
@@ -436,23 +459,29 @@ eth_rx(void)
 	u8 rxbyte, *rdptr = (u8 *) NetRxPackets[0];
 	u16 RxStatus, RxLen = 0;
 	u32 tmplen, i;
+	u8 int_status;
 #ifdef CONFIG_DM9000_USE_32BIT
 	u32 tmpdata;
 #endif
+	DM9000_iow(DM9000_IMR, IMR_PAR);    //bxl@hhtech
 
-	/* Check packet ready or not */
-	DM9000_ior(DM9000_MRCMDX);	/* Dummy read */
-	rxbyte = DM9000_inb(DM9000_DATA);	/* Got most updated data */
-	if (rxbyte == 0)
+	int_status = DM9000_ior(DM9000_ISR);
+	DM9000_iow(DM9000_ISR, int_status);
+
+	if (!(int_status & 1)) {
+		DM9000_iow(DM9000_IMR, 0x83);
 		return 0;
-
-	/* Status check: this byte must be 0 or 1 */
-	if (rxbyte > 1) {
-		DM9000_iow(DM9000_RCR, 0x00);	/* Stop Device */
-		DM9000_iow(DM9000_ISR, 0x80);	/* Stop INT request */
-		DM9000_DBG("rx status check: %d\n", rxbyte);
 	}
-	DM9000_DBG("receiving packet\n");
+	/* Check packet ready or not */
+	rxbyte = DM9000_ior(DM9000_MRCMDX);	/* Dummy read */    //bxl@hhtech
+//	printf("rxbyte=0x%x",rxbyte);
+	rxbyte = DM9000_ior(DM9000_MRCMDX);	/* Got most updated data */
+//	printf(", 0x%x\n",rxbyte);
+//	dump_regs();
+	if (rxbyte != 0x01) {
+		DM9000_iow(DM9000_IMR, 0x83);
+		return 0;
+	}
 
 	/* A packet ready now  & Get status/length */
 	DM9000_outb(DM9000_MRCMD, DM9000_IO);
@@ -473,7 +502,13 @@ eth_rx(void)
 	RxLen = tmpdata >> 16;
 
 #endif				/*  */
-	DM9000_DBG("rx status: 0x%04x rx len: %d\n", RxStatus, RxLen);
+	if((RxLen > DM9000_PKT_MAX) || (RxLen < 0x40)) {
+		printf("DM9000> RST: RX Len:%x\n", RxLen);
+		DM9000_iow(DM9000_IMR, 0x83);
+		return 0;
+	}
+
+//	printf("rx status: 0x%04x rx len: %d\n", RxStatus, RxLen);
 
 	/* Move data from DM9000 */
 	/* Read received packet from RX SRAM */
@@ -494,29 +529,11 @@ eth_rx(void)
 		((u32 *) rdptr)[i] = DM9000_inl(DM9000_DATA);
 
 #endif				/*  */
-	if ((RxStatus & 0xbf00) || (RxLen < 0x40)
-	    || (RxLen > DM9000_PKT_MAX)) {
-		if (RxStatus & 0x100) {
-			printf("rx fifo error\n");
-		}
-		if (RxStatus & 0x200) {
-			printf("rx crc error\n");
-		}
-		if (RxStatus & 0x8000) {
-			printf("rx length error\n");
-		}
-		if (RxLen > DM9000_PKT_MAX) {
-			printf("rx length too big\n");
-			dm9000_reset();
-		}
-	} else {
+	DM9000_DBG("passing packet to upper layer\n");
+	NetReceive(NetRxPackets[0], RxLen);
+	DM9000_iow(DM9000_IMR, 0x83);	
 
-		/* Pass to upper layer */
-		DM9000_DBG("passing packet to upper layer\n");
-		NetReceive(NetRxPackets[0], RxLen);
-		return RxLen;
-	}
-	return 0;
+	return RxLen;
 }
 
 /*

@@ -85,6 +85,11 @@ const char version_string[] =
 extern void cs8900_get_enetaddr (uchar * addr);
 #endif
 
+//bxl@hhtech
+#ifdef CONFIG_DRIVER_DM9000
+extern void dm9000_get_enetaddr (uchar * addr);
+#endif
+
 #ifdef CONFIG_DRIVER_RTL8019
 extern void rtl8019_get_enetaddr (uchar * addr);
 #endif

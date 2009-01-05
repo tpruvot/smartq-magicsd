@@ -92,7 +92,7 @@
  * Hardware drivers
  */
 //#define CONFIG_DRIVER_SMC911X	1	/* we have a SMC9115 on-board */
-
+#if 0
 #ifdef 	CONFIG_DRIVER_SMC911X	
 #undef	CONFIG_DRIVER_CS8900	
 #define CONFIG_DRIVER_SMC911X_BASE	0x18800300
@@ -101,7 +101,13 @@
 #define CS8900_BASE	  	0x18800300
 #define CS8900_BUS16		1 	/* the Linux driver does accesses as shorts */
 #endif
-
+#endif
+//bxl@hhtech
+#define CONFIG_DRIVER_DM9000    1
+#define CONFIG_DM9000_BASE      0x18000300
+#define CONFIG_DM9000_USE_16BIT
+#define DM9000_IO                       CONFIG_DM9000_BASE
+#define DM9000_DATA                     (CONFIG_DM9000_BASE+0x4)
 /*
  * select serial console configuration
  */
@@ -449,7 +455,7 @@
 #define CFG_NAND_LARGEPAGE_SAVEENV
 #define CFG_NAND_HWECC
 //#define CFG_NAND_FLASH_BBT
-#define CONFIG_BOOTCOMMAND	"nand read c0008000 40000 1c0000;bootm c0008000"
+#define CONFIG_BOOTCOMMAND	"nand read c0008000 40000 a00000;bootm c0008000"
 #elif defined(CONFIG_BOOT_MOVINAND)
 #define CFG_ENV_IS_IN_MOVINAND
 #define CONFIG_BOOTCOMMAND	"movi read zImage c0008000;bootm c0008000"

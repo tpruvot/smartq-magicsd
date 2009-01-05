@@ -26,5 +26,6 @@
 
 ifndef TEXT_BASE
 TEXT_BASE = 0xc7e00000
+#TEXT_BASE = 0x50001000
 endif
 

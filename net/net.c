@@ -317,6 +317,8 @@ restart:
 	memcpy (NetOurEther, bd->bi_enetaddr, 6);
 #endif
 
+	dm9000_get_enetaddr(NetOurEther);   //bxl@hhtech add
+
 	NetState = NETLOOP_CONTINUE;
 
 	/*
