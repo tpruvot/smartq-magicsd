@@ -56,9 +56,33 @@ else
 	ln -s ${LNPREFIX}arch-$6 asm-$2/arch
 fi
 
+# create link for s3c24xx SoC
+if [ "$3" = "s3c24xx" ] ; then
+	rm -f regs.h
+	ln -s $6.h regs.h
+	rm -f asm-$2/arch
+	ln -s arch-$3 asm-$2/arch
+fi
+
+# create link for s3c64xx SoC
+if [ "$3" = "s3c64xx" ] ; then
+	rm -f regs.h
+	ln -s $6.h regs.h
+	rm -f asm-$2/arch
+	ln -s arch-$3 asm-$2/arch
+fi
+
 if [ "$2" = "arm" ] ; then
 	rm -f asm-$2/proc
 	ln -s ${LNPREFIX}proc-armv asm-$2/proc
+fi
+
+# create link for s3c64xx-mp SoC
+if [ "$3" = "s3c64xx-mp" ] ; then
+	rm -f regs.h
+	ln -s $6.h regs.h
+	rm -f asm-$2/arch
+	ln -s arch-$3 asm-$2/arch
 fi
 
 #

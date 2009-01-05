@@ -203,6 +203,8 @@ LIBS += dtt/libdtt.a
 LIBS += drivers/libdrivers.a
 LIBS += drivers/nand/libnand.a
 LIBS += drivers/nand_legacy/libnand_legacy.a
+# add to support onenand. by scsuh
+LIBS += drivers/onenand/libonenand.a
 ifeq ($(CPU),mpc83xx)
 LIBS += drivers/qe/qe.a
 endif
@@ -248,6 +250,7 @@ $(obj)u-boot.srec:	$(obj)u-boot
 
 $(obj)u-boot.bin:	$(obj)u-boot
 		$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
+		$(OBJDUMP) -d $< > $<.dis
 
 $(obj)u-boot.img:	$(obj)u-boot.bin
 		./tools/mkimage -A $(ARCH) -T firmware -C none \
@@ -1916,6 +1919,42 @@ smdk2400_config	:	unconfig
 smdk2410_config	:	unconfig
 	@$(MKCONFIG) $(@:_config=) arm arm920t smdk2410 NULL s3c24x0
 
+smdk2412_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2412 samsung s3c2412
+
+smdk2440_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2440 samsung s3c2440
+
+smdk2460_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2460 samsung s3c2460
+
+smdk24a0_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk24a0 samsung s3c24a0
+
+tabla_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c64xx tabla samsung mdirac3
+
+smdk6400_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c64xx smdk6400 samsung s3c6400 
+
+smdk6410_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c64xx smdk6410 samsung s3c6410 
+
+smdk2443_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2443 samsung s3c2443
+
+smdk2450_config :       unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2450 samsung s3c2450
+
+smdk2416_config :       unconfig	
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2416 samsung s3c2416
+
+smdk2442_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c24xx smdk2442 samsung s3c2442
+
+smdk_mp_config	:	unconfig
+	@$(MKCONFIG) $(@:_config=) arm s3c64xx-mp smdk_mp samsung s3c64xx-mp
+
 SX1_config :		unconfig
 	@$(MKCONFIG) $(@:_config=) arm arm925t sx1
 
@@ -2296,8 +2335,10 @@ atstk1002_config	:	unconfig
 clean:
 	find $(OBJTREE) -type f \
 		\( -name 'core' -o -name '*.bak' -o -name '*~' \
+		-o -name '*~' -o -name '.depend*' \
 		-o -name '*.o'  -o -name '*.a'  \) -print \
 		| xargs rm -f
+	rm -f u-boot*
 	rm -f $(obj)examples/hello_world $(obj)examples/timer \
 	      $(obj)examples/eepro100_eeprom $(obj)examples/sched \
 	      $(obj)examples/mem_to_mem_idma2intr $(obj)examples/82559_eeprom \

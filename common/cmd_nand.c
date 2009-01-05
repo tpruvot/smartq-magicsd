@@ -56,21 +56,31 @@ static int nand_dump(nand_info_t *nand, ulong off)
 {
 	int i;
 	u_char *buf, *p;
+	struct nand_chip *chip = nand->priv;
+	unsigned long len = nand->writesize;
 
-	buf = malloc(nand->oobblock + nand->oobsize);
+	buf = malloc(nand->writesize + nand->oobsize);
+	
 	if (!buf) {
 		puts("No memory for page buffer\n");
 		return 1;
 	}
-	off &= ~(nand->oobblock - 1);
-	i = nand_read_raw(nand, buf, off, nand->oobblock, nand->oobsize);
-	if (i < 0) {
+
+	/* off &= ~(nand->writesize - 1); */
+
+	i = nand_read(nand, off, (unsigned long *)&len, (u_char *)buf);
+
+	/* if (i < 0) {
 		printf("Error (%d) reading page %08x\n", i, off);
 		free(buf);
 		return 1;
-	}
+	} */
+
 	printf("Page %08x dump:\n", off);
-	i = nand->oobblock >> 4; p = buf;
+
+	i = nand->writesize >> 4;
+	p = buf;
+
 	while (i--) {
 		printf( "\t%02x %02x %02x %02x %02x %02x %02x %02x"
 			"  %02x %02x %02x %02x %02x %02x %02x %02x\n",
@@ -78,13 +88,18 @@ static int nand_dump(nand_info_t *nand, ulong off)
 			p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
 		p += 16;
 	}
+
 	puts("OOB:\n");
+
+	p = chip->oob_poi;
 	i = nand->oobsize >> 3;
+
 	while (i--) {
 		printf( "\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
 			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 		p += 8;
 	}
+
 	free(buf);
 
 	return 0;
@@ -305,8 +320,9 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		if (s != NULL && strcmp(s, ".oob") == 0)
 			ret = nand_dump_oob(nand, off);
-		else
+		else {
 			ret = nand_dump(nand, off);
+		}
 
 		return ret == 0 ? 1 : 0;
 
@@ -351,11 +367,37 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 				opts.quiet      = quiet;
 				ret = nand_write_opts(nand, &opts);
 			}
-		} else {
+#ifdef CFG_NAND_YAFFS_WRITE
+		} else if (!read && s != NULL && + (!strcmp(s, ".yaffs") || !strcmp(s, ".yaffs1"))) {
+			nand_write_options_t opts;
+ 			memset(&opts, 0, sizeof(opts));
+ 			opts.buffer = (u_char*) addr;
+ 			opts.length = size;
+ 			opts.offset = off;
+ 			opts.pad = 0;
+ 			opts.blockalign = 1;
+ 			opts.quiet = quiet;
+ 			opts.writeoob = 1;
+ 			opts.autoplace = 1;
+
+			/* jsgood */
+ 			/* if (s[6] == '1')
+				opts.forceyaffs = 1; */
+
+ 			ret = nand_write_opts(nand, &opts);
+#endif
+ 		} else {
 			if (read)
 				ret = nand_read(nand, off, &size, (u_char *)addr);
-			else
+			else {
 				ret = nand_write(nand, off, &size, (u_char *)addr);
+
+				if (ret == 0) {
+					uint *magic = (uint*)(PHYS_SDRAM_1);
+					if ((0x24564236 == magic[0]) && (0x20764316 == magic[1]))
+						magic[0] = 0x27051956;
+				}
+			}
 		}
 
 		printf(" %d bytes %s: %s\n", size,
@@ -405,19 +447,19 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			       (nand_chip->read_byte(nand) & 0x80 ?
 				"NOT " : "" ) );
 
-			for (off = 0; off < nand->size; off += nand->oobblock) {
+			for (off = 0; off < nand->size; off += nand->writesize) {
 				int s = nand_get_lock_status(nand, off);
 
 				/* print message only if status has changed
 				 * or at end of chip
 				 */
-				if (off == nand->size - nand->oobblock
+				if (off == nand->size - nand->writesize
 				    || (s != last_status && off != 0))	{
 
 					printf("%08x - %08x: %8d pages %s%s%s\n",
 					       block_start,
 					       off-1,
-					       (off-block_start)/nand->oobblock,
+					       (off-block_start)/nand->writesize,
 					       ((last_status & NAND_LOCK_STATUS_TIGHT) ? "TIGHT " : ""),
 					       ((last_status & NAND_LOCK_STATUS_LOCK) ? "LOCK " : ""),
 					       ((last_status & NAND_LOCK_STATUS_UNLOCK) ? "UNLOCK " : ""));
@@ -457,12 +499,16 @@ usage:
 
 U_BOOT_CMD(nand, 5, 1, do_nand,
 	"nand    - NAND sub-system\n",
-	"info                  - show available NAND devices\n"
+	"info             - show available NAND devices\n"
 	"nand device [dev]     - show or set current device\n"
 	"nand read[.jffs2]     - addr off|partition size\n"
 	"nand write[.jffs2]    - addr off|partiton size - read/write `size' bytes starting\n"
 	"    at offset `off' to/from memory address `addr'\n"
-	"nand erase [clean] [off size] - erase `size' bytes from\n"
+#ifdef CFG_NAND_YAFFS_WRITE
+	"nand write[.yaffs[1]] - addr off|partition size - write `size' byte yaffs image\n"
+	"    starting at offset `off' from memory address `addr' (.yaffs1 for 512+16 NAND)\n"
+#endif
+ 	"nand erase [clean] [off size] - erase `size' bytes from\n"
 	"    offset `off' (entire device if not specified)\n"
 	"nand bad - show bad blocks\n"
 	"nand dump[.oob] off - dump page\n"
@@ -482,7 +528,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 
 	printf("\nLoading from %s, offset 0x%lx\n", nand->name, offset);
 
-	cnt = nand->oobblock;
+	cnt = nand->writesize;
 	r = nand_read(nand, offset, &cnt, (u_char *) addr);
 	if (r) {
 		puts("** Read error\n");

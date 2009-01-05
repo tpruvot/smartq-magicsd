@@ -45,7 +45,7 @@
 
 #if (CONFIG_COMMANDS & CFG_CMD_NET)
 
-#undef DEBUG
+#undef DEBUG_CS8900
 
 /* packet page register access functions */
 
@@ -56,7 +56,7 @@
 static unsigned short get_reg_init_bus (int regno)
 {
 	/* force 16 bit busmode */
-	volatile unsigned char c;
+	vu_char c;
 
 	c = CS8900_BUS16_0;
 	c = CS8900_BUS16_1;
@@ -128,8 +128,13 @@ void cs8900_get_enetaddr (uchar * addr)
 	}
 
 	/* verify chip id */
-	if (get_reg_init_bus (PP_ChipID) != 0x630e)
+	if (get_reg_init_bus (PP_ChipID) != 0x630e) {
+		printf("Net:     Not Found CS8900@0x%08x\n", CS8900_BASE);
 		return;
+	}
+	else {
+		printf("Net:     Found CS8900@0x%08x\n", CS8900_BASE);
+	}
 	eth_reset ();
 	if ((get_reg (PP_SelfST) & (PP_SelfSTAT_EEPROM | PP_SelfSTAT_EEPROM_OK)) ==
 			(PP_SelfSTAT_EEPROM | PP_SelfSTAT_EEPROM_OK)) {
@@ -165,7 +170,7 @@ void cs8900_get_enetaddr (uchar * addr)
 				 addr[0], addr[1],
 				 addr[2], addr[3],
 				 addr[4], addr[5]) ;
-			debug ("### Set environment from HW MAC addr = \"%s\"\n",				ethaddr);
+			debug ("### Set environment from HW MAC addr = \"%s\"\n", ethaddr);
 			setenv ("ethaddr", ethaddr);
 		}
 
@@ -183,7 +188,6 @@ void eth_halt (void)
 
 int eth_init (bd_t * bd)
 {
-
 	/* verify chip id */
 	if (get_reg_init_bus (PP_ChipID) != 0x630e) {
 		printf ("CS8900 Ethernet chip not found?!\n");
@@ -216,7 +220,7 @@ extern int eth_rx (void)
 	status = CS8900_RTDATA;		/* stat */
 	rxlen = CS8900_RTDATA;		/* len */
 
-#ifdef DEBUG
+#ifdef DEBUG_CS8900
 	if (rxlen > PKTSIZE_ALIGN + PKTALIGN)
 		printf ("packet too big!\n");
 #endif
@@ -247,7 +251,7 @@ retry:
 	/* Test to see if the chip has allocated memory for the packet */
 	if ((get_reg (PP_BusSTAT) & PP_BusSTAT_TxRDY) == 0) {
 		/* Oops... this should not happen! */
-#ifdef DEBUG
+#ifdef DEBUG_CS8900
 		printf ("cs: unable to send packet; retrying...\n");
 #endif
 		for (tmo = get_timer (0) + 5 * CFG_HZ; get_timer (0) < tmo;)
@@ -271,7 +275,7 @@ retry:
 
 	/* nothing */ ;
 	if ((s & (PP_TER_CRS | PP_TER_TxOK)) != PP_TER_TxOK) {
-#ifdef DEBUG
+#ifdef DEBUG_CS8900
 		printf ("\ntransmission error %#x\n", s);
 #endif
 	}

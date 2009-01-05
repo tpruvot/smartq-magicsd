@@ -37,9 +37,32 @@ int do_mmc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
+/*
+int do_testmmc(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	uint start_blk, blknum, tag;
+	start_blk = simple_strtoul(argv[1], NULL, 10);
+	blknum = simple_strtoul(argv[2], NULL, 10);
+	tag = simple_strtoul(argv[3], NULL, 10);
+
+	if(argc < 4)
+		return 0;
+	
+	printf("COMMND --> start_blk = 0x%x, blknum = %d, flag = %d \n", start_blk, blknum, tag);	
+	test_mmc(start_blk, blknum, tag);
+	return 1;
+}
+
+U_BOOT_CMD(
+	testmmc,	4,	0,	do_testmmc,
+	"testmmc - mmc testing write/read\n",
+	NULL
+);
+*/
+
 U_BOOT_CMD(
 	mmcinit,	1,	0,	do_mmc,
-	"mmcinit - init mmc card\n",
+	"mmcinit - initialize mmc card\n",
 	NULL
 );
 

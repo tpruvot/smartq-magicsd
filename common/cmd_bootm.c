@@ -155,7 +155,7 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	ulong	iflag;
 	ulong	addr;
 	ulong	data, len, checksum;
-	ulong  *len_ptr;
+	ulong  *len_ptr = NULL; /* not to make warning. by scsuh */
 	uint	unc_len = CFG_BOOTM_LEN;
 	int	i, verify;
 	char	*name, *s;
@@ -170,6 +170,17 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	} else {
 		addr = simple_strtoul(argv[1], NULL, 16);
 	}
+
+#ifdef CONFIG_ZIMAGE_BOOT
+#define LINUX_ZIMAGE_MAGIC	0x016f2818
+	if (*(ulong *)(addr + 9*4) == LINUX_ZIMAGE_MAGIC) {
+		printf("Boot with zImage\n");
+		addr = virt_to_phys(addr);
+		hdr->ih_os = IH_OS_LINUX;
+		hdr->ih_ep = ntohl(addr);
+		goto after_header_check;
+	}
+#endif
 
 	SHOW_BOOT_PROGRESS (1);
 	printf ("## Booting image at %08lx ...\n", addr);
@@ -194,6 +205,14 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		} else
 #endif	/* __I386__ */
 	    {
+#ifdef CONFIG_IMAGE_BOOT
+		printf("Boot with Image\n");
+		addr = virt_to_phys(addr);
+		hdr->ih_os = IH_OS_LINUX;
+		hdr->ih_ep = ntohl(addr);
+		hdr->ih_comp = IH_COMP_NONE;
+		goto after_header_check;
+#endif
 		puts ("Bad Magic Number\n");
 		SHOW_BOOT_PROGRESS (-1);
 		return 1;
@@ -409,6 +428,9 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 	SHOW_BOOT_PROGRESS (8);
 
+#if defined(CONFIG_ZIMAGE_BOOT) || defined(CONFIG_IMAGE_BOOT)
+after_header_check:
+#endif
 	switch (hdr->ih_os) {
 	default:			/* handled by (original) Linux case */
 	case IH_OS_LINUX:

@@ -67,7 +67,13 @@ void nand_init(void)
 		if (nand_curr_device == -1)
 			nand_curr_device = i;
 	}
-	printf("%lu MiB\n", size / (1024 * 1024));
+	printf("%lu MB ", size / (1024 * 1024));
+
+#if defined(CFG_NAND_FLASH_BBT)
+	printf("(Flash Based BBT Enabled)");
+#endif
+
+	printf("\n");
 
 #ifdef CFG_NAND_SELECT_DEVICE
 	/*

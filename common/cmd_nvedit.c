@@ -57,8 +57,10 @@ DECLARE_GLOBAL_DATA_PTR;
     !defined(CFG_ENV_IS_IN_FLASH)	&& \
     !defined(CFG_ENV_IS_IN_DATAFLASH)	&& \
     !defined(CFG_ENV_IS_IN_NAND)	&& \
+    !defined(CFG_ENV_IS_IN_MOVINAND)	&& \
+    !defined(CFG_ENV_IS_IN_ONENAND)	&& \
     !defined(CFG_ENV_IS_NOWHERE)
-# error Define one of CFG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|NOWHERE}
+# error Define one of CFG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|NAND|MOVINAND|ONENAND|NOWHERE}
 #endif
 
 #define XMK_STR(x)	#x
@@ -539,7 +541,11 @@ int getenv_r (char *name, char *buf, unsigned len)
     ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_FLASH)) == \
       (CFG_CMD_ENV|CFG_CMD_FLASH)) || \
     ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_NAND)) == \
-      (CFG_CMD_ENV|CFG_CMD_NAND))
+      (CFG_CMD_ENV|CFG_CMD_NAND)) || \
+    ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_MOVINAND)) == \
+      (CFG_CMD_ENV|CFG_CMD_MOVINAND)) || \
+    ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_ONENAND)) == \
+      (CFG_CMD_ENV|CFG_CMD_ONENAND))
 int do_saveenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	extern char * env_name_spec;
@@ -548,7 +554,6 @@ int do_saveenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	return (saveenv() ? 1 : 0);
 }
-
 
 #endif
 
@@ -597,13 +602,16 @@ U_BOOT_CMD(
     ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_FLASH)) == \
       (CFG_CMD_ENV|CFG_CMD_FLASH)) || \
     ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_NAND)) == \
-      (CFG_CMD_ENV|CFG_CMD_NAND))
+      (CFG_CMD_ENV|CFG_CMD_NAND)) || \
+    ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_MOVINAND)) == \
+      (CFG_CMD_ENV|CFG_CMD_MOVINAND)) || \
+    ((CONFIG_COMMANDS & (CFG_CMD_ENV|CFG_CMD_ONENAND)) == \
+      (CFG_CMD_ENV|CFG_CMD_ONENAND))
 U_BOOT_CMD(
 	saveenv, 1, 0,	do_saveenv,
 	"saveenv - save environment variables to persistent storage\n",
 	NULL
 );
-
 #endif	/* CFG_CMD_ENV */
 
 #if (CONFIG_COMMANDS & CFG_CMD_ASKENV)

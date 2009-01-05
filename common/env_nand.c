@@ -186,6 +186,36 @@ int saveenv(void)
 	return ret;
 }
 #else /* ! CFG_ENV_OFFSET_REDUND */
+#ifdef CFG_NAND_LARGEPAGE_SAVEENV
+int saveenv(void)
+{
+	ulong total;
+	int ret = 0;
+
+	env_t *tmp_env1;
+	total = CFG_ENV_OFFSET;
+
+	tmp_env1 = (u_char *) malloc(total);
+	/*nand_read(&nand_info[0], CFG_ENV_OFFSET, &total,  (u_char*) tmp_env1);*/
+	nand_read(&nand_info[0], 0x0, &total,  (u_char*) tmp_env1);
+
+	puts ("Erasing Nand...");
+	/*if (nand_erase(&nand_info[0], CFG_ENV_OFFSET, CFG_ENV_SIZE))*/
+	if (nand_erase(&nand_info[0], 0x0, CFG_ENV_OFFSET+CFG_ENV_SIZE))
+		return 1;
+
+	puts ("Writing to Nand... ");
+	ret = nand_write(&nand_info[0], 0x0, &total, (u_char*)tmp_env1);
+	total = CFG_ENV_SIZE;
+
+	ret = nand_write(&nand_info[0], CFG_ENV_OFFSET, &total, (u_char*)env_ptr);
+	if (ret || total != CFG_ENV_SIZE)
+		return 1;
+
+	puts ("done\n");
+	return ret;
+}
+#else
 int saveenv(void)
 {
 	ulong total;
@@ -204,6 +234,7 @@ int saveenv(void)
 	puts ("done\n");
 	return ret;
 }
+#endif
 #endif /* CFG_ENV_OFFSET_REDUND */
 #endif /* CMD_SAVEENV */
 

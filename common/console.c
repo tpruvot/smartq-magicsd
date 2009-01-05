@@ -445,21 +445,21 @@ int console_init_r (void)
 
 #ifndef CFG_CONSOLE_INFO_QUIET
 	/* Print information */
-	puts ("In:    ");
+	puts ("In:      ");
 	if (stdio_devices[stdin] == NULL) {
 		puts ("No input devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdin]->name);
 	}
 
-	puts ("Out:   ");
+	puts ("Out:     ");
 	if (stdio_devices[stdout] == NULL) {
 		puts ("No output devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdout]->name);
 	}
 
-	puts ("Err:   ");
+	puts ("Err:     ");
 	if (stdio_devices[stderr] == NULL) {
 		puts ("No error devices available!\n");
 	} else {
@@ -533,21 +533,21 @@ int console_init_r (void)
 
 #ifndef CFG_CONSOLE_INFO_QUIET
 	/* Print information */
-	puts ("In:    ");
+	puts ("In:      ");
 	if (stdio_devices[stdin] == NULL) {
 		puts ("No input devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdin]->name);
 	}
 
-	puts ("Out:   ");
+	puts ("Out:     ");
 	if (stdio_devices[stdout] == NULL) {
 		puts ("No output devices available!\n");
 	} else {
 		printf ("%s\n", stdio_devices[stdout]->name);
 	}
 
-	puts ("Err:   ");
+	puts ("Err:     ");
 	if (stdio_devices[stderr] == NULL) {
 		puts ("No error devices available!\n");
 	} else {

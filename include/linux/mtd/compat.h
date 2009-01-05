@@ -43,4 +43,7 @@
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 
 #define PAGE_SIZE	4096
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 #endif

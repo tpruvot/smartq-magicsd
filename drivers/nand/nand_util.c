@@ -37,6 +37,7 @@
 #include <command.h>
 #include <watchdog.h>
 #include <malloc.h>
+#include <div64.h>
 
 #include <nand.h>
 #include <jffs2/jffs2.h>
@@ -79,12 +80,23 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 	int (*nand_block_bad_old)(struct mtd_info *, loff_t, int) = NULL;
 	const char *mtd_device = meminfo->name;
 
+	/* jsgood */
+	struct mtd_oob_ops oob_ops;
+	memset(&cleanmarker, 0, sizeof(cleanmarker));
+
 	memset(&erase, 0, sizeof(erase));
 
 	erase.mtd = meminfo;
 	erase.len  = meminfo->erasesize;
-	erase.addr = opts->offset;
-	erase_length = opts->length;
+	if (opts->offset == 0 && opts->length == 0) {
+		/* erase complete chip */
+		erase.addr = 0;
+		erase_length = meminfo->size;
+	} else {
+		/* erase specified region */
+		erase.addr = opts->offset;
+		erase_length = opts->length;
+	}
 
 	isNAND = meminfo->type == MTD_NANDFLASH ? 1 : 0;
 
@@ -92,20 +104,23 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 		cleanmarker.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
 		cleanmarker.nodetype = cpu_to_je16 (JFFS2_NODETYPE_CLEANMARKER);
 		if (isNAND) {
-			struct nand_oobinfo *oobinfo = &meminfo->oobinfo;
+			/* org: struct nand_oobinfo *oobinfo = &meminfo->oobinfo; */
+			struct nand_ecclayout *oobinfo = meminfo->ecclayout;
 
 			/* check for autoplacement */
 			if (oobinfo->useecc == MTD_NANDECC_AUTOPLACE) {
 				/* get the position of the free bytes */
-				if (!oobinfo->oobfree[0][1]) {
+				if (!oobinfo->oobfree[0].length) {
 					printf(" Eeep. Autoplacement selected "
 					       "and no empty space in oob\n");
 					return -1;
 				}
-				clmpos = oobinfo->oobfree[0][0];
-				clmlen = oobinfo->oobfree[0][1];
-				if (clmlen > 8)
-					clmlen = 8;
+				clmpos = oobinfo->oobfree[0].offset;
+				clmlen = oobinfo->oobfree[0].length;
+
+				/* jsgood */
+				if (clmlen > 12)
+					clmlen = 12;
 			} else {
 				/* legacy mode */
 				switch (meminfo->oobsize) {
@@ -129,9 +144,10 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 			cleanmarker.totlen =
 				cpu_to_je32(sizeof(struct jffs2_unknown_node));
 		}
-		cleanmarker.hdr_crc =  cpu_to_je32(
+		/* jsgood */
+		/* cleanmarker.hdr_crc =  cpu_to_je32(
 			crc32_no_comp(0, (unsigned char *) &cleanmarker,
-				      sizeof(struct jffs2_unknown_node) - 4));
+				      sizeof(struct jffs2_unknown_node) - 4)); */
 	}
 
 	/* scrub option allows to erase badblock. To prevent internal
@@ -188,13 +204,20 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 
 			/* write cleanmarker */
 			if (isNAND) {
-				size_t written;
-				result = meminfo->write_oob(meminfo,
+				/* org: result = meminfo->write_oob(meminfo,
 							    erase.addr + clmpos,
 							    clmlen,
 							    &written,
 							    (unsigned char *)
-							    &cleanmarker);
+							    &cleanmarker); */
+				oob_ops.mode = MTD_OOB_AUTO;
+				oob_ops.ooboffs = 0;
+				oob_ops.ooblen = clmlen;				
+				oob_ops.oobbuf = (unsigned char *)&cleanmarker;
+				oob_ops.datbuf = NULL;
+				
+				result = meminfo->write_oob(meminfo, erase.addr, &oob_ops);
+			
 				if (result != 0) {
 					printf("\n%s: MTD writeoob failure: %d\n",
 					       mtd_device, result);
@@ -208,10 +231,13 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 		}
 
 		if (!opts->quiet) {
-			int percent = (int)
-				((unsigned long long)
+			unsigned long long n =(unsigned long long)
 				 (erase.addr+meminfo->erasesize-opts->offset)
-				 * 100 / erase_length);
+				* 100;
+			int percent;
+
+			do_div(n, erase_length);
+			percent = (int)n;
 
 			/* output progress message only at whole percent
 			 * steps to reduce the number of messages printed
@@ -252,6 +278,7 @@ static unsigned char data_buf[MAX_PAGE_SIZE];
 static unsigned char oob_buf[MAX_OOB_SIZE];
 
 /* OOB layouts to pass into the kernel as default */
+#if 0
 static struct nand_oobinfo none_oobinfo = {
 	.useecc = MTD_NANDECC_OFF,
 };
@@ -271,6 +298,33 @@ static struct nand_oobinfo yaffs_oobinfo = {
 static struct nand_oobinfo autoplace_oobinfo = {
 	.useecc = MTD_NANDECC_AUTOPLACE
 };
+#endif
+
+/* jsgood */
+static struct nand_ecclayout none_oobinfo = {
+	.useecc = MTD_NANDECC_OFF,
+};
+
+static struct nand_ecclayout jffs2_oobinfo = {
+	.useecc = MTD_NANDECC_PLACE,
+	.eccbytes = 32,
+	.eccpos = {
+		   16, 17, 18, 19, 20, 21, 22, 23,
+		   24, 25, 26, 27, 28, 29, 30, 31,
+		   32, 33, 34, 35, 36, 37, 38, 39,
+		   40, 41, 42, 43, 44, 45, 46, 47},
+};
+
+static struct nand_ecclayout yaffs_oobinfo = {
+	.useecc = MTD_NANDECC_PLACE,
+	.eccbytes = 3,
+	.eccpos = {2, 3, 6},
+};
+
+static struct nand_ecclayout autoplace_oobinfo = {
+	.useecc = MTD_NANDECC_AUTOPLACE
+};
+
 
 /**
  * nand_write_opts: - write image to NAND flash with support for various options
@@ -292,12 +346,18 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 	int readlen;
 	int oobinfochanged = 0;
 	int percent_complete = -1;
-	struct nand_oobinfo old_oobinfo;
+
+	/* org: struct nand_oobinfo old_oobinfo; */
+	struct nand_ecclayout old_oobinfo;
+	
 	ulong mtdoffset = opts->offset;
 	ulong erasesize_blockalign;
 	u_char *buffer = opts->buffer;
 	size_t written;
 	int result;
+
+	/* jsgood */
+	struct mtd_oob_ops oob_ops;
 
 	if (opts->pad && opts->writeoob) {
 		printf("Can't pad when oob data is present.\n");
@@ -313,34 +373,41 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 	}
 
 	/* make sure device page sizes are valid */
-	if (!(meminfo->oobsize == 16 && meminfo->oobblock == 512)
-	    && !(meminfo->oobsize == 8 && meminfo->oobblock == 256)
-	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)) {
+	if (!(meminfo->oobsize == 16 && meminfo->writesize == 512)
+	    && !(meminfo->oobsize == 8 && meminfo->writesize == 256)
+	    && !(meminfo->oobsize == 64 && meminfo->writesize == 2048)) {
 		printf("Unknown flash (not normal NAND)\n");
 		return -1;
 	}
 
 	/* read the current oob info */
-	memcpy(&old_oobinfo, &meminfo->oobinfo, sizeof(old_oobinfo));
+	/* org: memcpy(&old_oobinfo, &meminfo->oobinfo, sizeof(old_oobinfo)); */
+	memcpy(&old_oobinfo, meminfo->ecclayout, sizeof(struct nand_ecclayout));
 
 	/* write without ecc? */
 	if (opts->noecc) {
-		memcpy(&meminfo->oobinfo, &none_oobinfo,
-		       sizeof(meminfo->oobinfo));
+		/* org: memcpy(&meminfo->oobinfo, &none_oobinfo,
+		       sizeof(meminfo->oobinfo)); */
+		memcpy(meminfo->ecclayout, &none_oobinfo, 
+			sizeof(struct nand_ecclayout));
 		oobinfochanged = 1;
 	}
 
 	/* autoplace ECC? */
 	if (opts->autoplace && (old_oobinfo.useecc != MTD_NANDECC_AUTOPLACE)) {
 
-		memcpy(&meminfo->oobinfo, &autoplace_oobinfo,
-		       sizeof(meminfo->oobinfo));
+		/* org: memcpy(&meminfo->oobinfo, &autoplace_oobinfo,
+		       sizeof(meminfo->oobinfo)); */
+		memcpy(meminfo->ecclayout, &autoplace_oobinfo, 
+			sizeof(struct nand_ecclayout));
 		oobinfochanged = 1;
 	}
 
 	/* force OOB layout for jffs2 or yaffs? */
 	if (opts->forcejffs2 || opts->forceyaffs) {
-		struct nand_oobinfo *oobsel =
+		/* org: struct nand_oobinfo *oobsel =
+			opts->forcejffs2 ? &jffs2_oobinfo : &yaffs_oobinfo; */
+		struct nand_ecclayout *oobsel =
 			opts->forcejffs2 ? &jffs2_oobinfo : &yaffs_oobinfo;
 
 		if (meminfo->oobsize == 8) {
@@ -353,12 +420,13 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 			jffs2_oobinfo.eccbytes = 3;
 		}
 
-		memcpy(&meminfo->oobinfo, oobsel, sizeof(meminfo->oobinfo));
+		/* org: memcpy(&meminfo->oobinfo, oobsel, sizeof(meminfo->oobinfo)); */
+		memcpy(meminfo->ecclayout, oobsel, sizeof(struct nand_ecclayout));
 	}
 
 	/* get image length */
 	imglen = opts->length;
-	pagelen = meminfo->oobblock
+	pagelen = meminfo->writesize
 		+ ((opts->writeoob != 0) ? meminfo->oobsize : 0);
 
 	/* check, if file is pagealigned */
@@ -368,11 +436,11 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 	}
 
 	/* check, if length fits into device */
-	if (((imglen / pagelen) * meminfo->oobblock)
+	if (((imglen / pagelen) * meminfo->writesize)
 	     > (meminfo->size - opts->offset)) {
 		printf("Image %d bytes, NAND page %d bytes, "
 		       "OOB area %u bytes, device size %u bytes\n",
-		       imglen, pagelen, meminfo->oobblock, meminfo->size);
+		       imglen, pagelen, meminfo->writesize, meminfo->size);
 		printf("Input block does not fit into device\n");
 		goto restoreoob;
 	}
@@ -426,17 +494,20 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 			} while (offs < blockstart + erasesize_blockalign);
 		}
 
-		readlen = meminfo->oobblock;
+		readlen = meminfo->writesize;
 		if (opts->pad && (imglen < readlen)) {
 			readlen = imglen;
 			memset(data_buf + readlen, 0xff,
-			       meminfo->oobblock - readlen);
+			       meminfo->writesize - readlen);
 		}
 
 		/* read page data from input memory buffer */
 		memcpy(data_buf, buffer, readlen);
 		buffer += readlen;
 
+		/* This is yaffs2 writing if opts->writeoob == 1,
+		 * and the other case is jffs2 writing in S3C NAND by jsgood.
+		 */
 		if (opts->writeoob) {
 			/* read OOB data from input memory block, exit
 			 * on failure */
@@ -445,12 +516,20 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 
 			/* write OOB data first, as ecc will be placed
 			 * in there*/
-			result = meminfo->write_oob(meminfo,
+			/* org: result = meminfo->write_oob(meminfo,
 						    mtdoffset,
 						    meminfo->oobsize,
 						    &written,
 						    (unsigned char *)
-						    &oob_buf);
+						    &oob_buf); */
+			oob_ops.mode = MTD_OOB_AUTO;
+			oob_ops.len = meminfo->writesize;
+			oob_ops.ooboffs = 0;
+			oob_ops.ooblen = meminfo->oobsize;			
+			oob_ops.oobbuf = (unsigned char *)&oob_buf;
+			oob_ops.datbuf = (unsigned char *)&data_buf;
+
+			result = meminfo->write_oob(meminfo, mtdoffset, &oob_ops);
 
 			if (result != 0) {
 				printf("\nMTD writeoob failure: %d\n",
@@ -458,27 +537,31 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 				goto restoreoob;
 			}
 			imglen -= meminfo->oobsize;
+		} else {
+			/* write out the page data */
+			result = meminfo->write(meminfo,
+						mtdoffset,
+						meminfo->writesize,
+						&written,
+						(unsigned char *) &data_buf);
+
+			if (result != 0) {
+				printf("writing NAND page at offset 0x%lx failed\n",
+				       mtdoffset);
+				goto restoreoob;
+			}
 		}
 
-		/* write out the page data */
-		result = meminfo->write(meminfo,
-					mtdoffset,
-					meminfo->oobblock,
-					&written,
-					(unsigned char *) &data_buf);
-
-		if (result != 0) {
-			printf("writing NAND page at offset 0x%lx failed\n",
-			       mtdoffset);
-			goto restoreoob;
-		}
 		imglen -= readlen;
 
 		if (!opts->quiet) {
-			int percent = (int)
-				((unsigned long long)
-				 (opts->length-imglen) * 100
-				 / opts->length);
+			unsigned long long n = (unsigned long long)
+				 (opts->length-imglen) * 100;
+			int percent;
+
+			do_div(n, opts->length);
+			percent = (int)n;
+
 			/* output progress message only at whole percent
 			 * steps to reduce the number of messages printed
 			 * on (slow) serial consoles
@@ -491,7 +574,7 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 			}
 		}
 
-		mtdoffset += meminfo->oobblock;
+		mtdoffset += meminfo->writesize;
 	}
 
 	if (!opts->quiet)
@@ -499,8 +582,10 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 
 restoreoob:
 	if (oobinfochanged) {
-		memcpy(&meminfo->oobinfo, &old_oobinfo,
-		       sizeof(meminfo->oobinfo));
+		/* org: memcpy(&meminfo->oobinfo, &old_oobinfo,
+		       sizeof(meminfo->oobinfo)); */
+		memcpy(meminfo->ecclayout, &old_oobinfo,
+		       sizeof(struct nand_ecclayout));		       
 	}
 
 	if (imglen > 0) {
@@ -533,23 +618,26 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 	u_char *buffer = opts->buffer;
 	int result;
 
+	/* jsgood */
+	struct mtd_oob_ops oob_ops;
+
 	/* make sure device page sizes are valid */
-	if (!(meminfo->oobsize == 16 && meminfo->oobblock == 512)
-	    && !(meminfo->oobsize == 8 && meminfo->oobblock == 256)
-	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)) {
+	if (!(meminfo->oobsize == 16 && meminfo->writesize == 512)
+	    && !(meminfo->oobsize == 8 && meminfo->writesize == 256)
+	    && !(meminfo->oobsize == 64 && meminfo->writesize == 2048)) {
 		printf("Unknown flash (not normal NAND)\n");
 		return -1;
 	}
 
-	pagelen = meminfo->oobblock
+	pagelen = meminfo->writesize
 		+ ((opts->readoob != 0) ? meminfo->oobsize : 0);
 
 	/* check, if length is not larger than device */
-	if (((imglen / pagelen) * meminfo->oobblock)
+	if (((imglen / pagelen) * meminfo->writesize)
 	     > (meminfo->size - opts->offset)) {
 		printf("Image %d bytes, NAND page %d bytes, "
 		       "OOB area %u bytes, device size %u bytes\n",
-		       imglen, pagelen, meminfo->oobblock, meminfo->size);
+		       imglen, pagelen, meminfo->writesize, meminfo->size);
 		printf("Input block is larger than device\n");
 		return -1;
 	}
@@ -607,7 +695,7 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 		/* read page data to memory buffer */
 		result = meminfo->read(meminfo,
 				       mtdoffset,
-				       meminfo->oobblock,
+				       meminfo->writesize,
 				       &readlen,
 				       (unsigned char *) &data_buf);
 
@@ -626,12 +714,20 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 		imglen -= readlen;
 
 		if (opts->readoob) {
-			result = meminfo->read_oob(meminfo,
+			/* org: result = meminfo->read_oob(meminfo,
 						   mtdoffset,
 						   meminfo->oobsize,
 						   &readlen,
 						   (unsigned char *)
-						   &oob_buf);
+						   &oob_buf); */
+			oob_ops.mode = MTD_OOB_AUTO;
+			oob_ops.ooboffs = 0;
+			oob_ops.ooblen = meminfo->oobsize;
+			oob_ops.oobbuf = (unsigned char *)&oob_buf;
+			oob_ops.datbuf = NULL;
+			
+			result = meminfo->read_oob(meminfo, mtdoffset, &oob_ops);
+			readlen = oob_ops.oobretlen;
 
 			if (result != 0) {
 				printf("\nMTD readoob failure: %d\n",
@@ -651,10 +747,13 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 		}
 
 		if (!opts->quiet) {
-			int percent = (int)
-				((unsigned long long)
-				 (opts->length-imglen) * 100
-				 / opts->length);
+			unsigned long long n = (unsigned long long)
+				 (opts->length-imglen) * 100;
+			int percent;
+
+			do_div(n, opts->length);
+			percent = (int)n;
+
 			/* output progress message only at whole percent
 			 * steps to reduce the number of messages printed
 			 * on (slow) serial consoles
@@ -668,7 +767,7 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 			}
 		}
 
-		mtdoffset += meminfo->oobblock;
+		mtdoffset += meminfo->writesize;
 	}
 
 	if (!opts->quiet)
@@ -717,7 +816,7 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 int nand_lock(nand_info_t *meminfo, int tight)
 {
 	int ret = 0;
-	int status;
+	int status = 0;
 	struct nand_chip *this = meminfo->priv;
 
 	/* select the NAND device */
@@ -727,8 +826,10 @@ int nand_lock(nand_info_t *meminfo, int tight)
 		      (tight ? NAND_CMD_LOCK_TIGHT : NAND_CMD_LOCK),
 		      -1, -1);
 
+#if 0
 	/* call wait ready function */
 	status = this->waitfunc(meminfo, this, FL_WRITING);
+#endif
 
 	/* see if device thinks it succeeded */
 	if (status & 0x01) {
@@ -767,7 +868,7 @@ int nand_get_lock_status(nand_info_t *meminfo, ulong offset)
 	this->select_chip(meminfo, chipnr);
 
 
-	if ((offset & (meminfo->oobblock - 1)) != 0) {
+	if ((offset & (meminfo->writesize - 1)) != 0) {
 		printf ("nand_get_lock_status: "
 			"Start address must be beginning of "
 			"nand page!\n");
@@ -796,7 +897,7 @@ int nand_get_lock_status(nand_info_t *meminfo, ulong offset)
  * @param meminfo	nand mtd instance
  * @param start		start byte address
  * @param length	number of bytes to unlock (must be a multiple of
- *			page size nand->oobblock)
+ *			page size nand->writesize)
  *
  * @return		0 on success, -1 in case of error
  */
@@ -804,7 +905,7 @@ int nand_unlock(nand_info_t *meminfo, ulong start, ulong length)
 {
 	int ret = 0;
 	int chipnr;
-	int status;
+	int status = 0;
 	int page;
 	struct nand_chip *this = meminfo->priv;
 	printf ("nand_unlock: start: %08x, length: %d!\n",
@@ -822,14 +923,14 @@ int nand_unlock(nand_info_t *meminfo, ulong start, ulong length)
 		goto out;
 	}
 
-	if ((start & (meminfo->oobblock - 1)) != 0) {
+	if ((start & (meminfo->writesize - 1)) != 0) {
 		printf ("nand_unlock: Start address must be beginning of "
 			"nand page!\n");
 		ret = -1;
 		goto out;
 	}
 
-	if (length == 0 || (length & (meminfo->oobblock - 1)) != 0) {
+	if (length == 0 || (length & (meminfo->writesize - 1)) != 0) {
 		printf ("nand_unlock: Length must be a multiple of nand page "
 			"size!\n");
 		ret = -1;
@@ -844,8 +945,11 @@ int nand_unlock(nand_info_t *meminfo, ulong start, ulong length)
 	page += (int)(length >> this->page_shift) - 1;
 	this->cmdfunc(meminfo, NAND_CMD_UNLOCK2, -1, page & this->pagemask);
 
+#if 0
 	/* call wait ready function */
 	status = this->waitfunc(meminfo, this, FL_WRITING);
+#endif
+
 	/* see if device thinks it succeeded */
 	if (status & 0x01) {
 		/* there was an error */
