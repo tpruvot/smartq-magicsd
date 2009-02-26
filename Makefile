@@ -126,6 +126,8 @@ CROSS_COMPILE = powerpc-linux-
 endif
 ifeq ($(ARCH),arm)
 CROSS_COMPILE = arm-linux-
+CROSS_COMPILE = arm-none-linux-gnueabi-
+CROSS_COMPILE = arm-linux-gnueabi-
 endif
 ifeq ($(ARCH),i386)
 ifeq ($(HOSTARCH),i386)

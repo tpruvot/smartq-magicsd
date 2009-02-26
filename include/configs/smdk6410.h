@@ -29,6 +29,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_HHTECH_MINIPMP 
+  #define BRANCH_7INCH          1
 /*
  * High Level Configuration Options
  * (easy to change)
@@ -43,7 +45,7 @@
 /* input clock of PLL */
 #define CONFIG_SYS_CLK_FREQ	12000000	/* the SMDK6400 has 12MHz input clock */
 
-#define CONFIG_ENABLE_MMU
+#undef CONFIG_ENABLE_MMU
 #ifdef CONFIG_ENABLE_MMU
 #define virt_to_phys(x)	virt_to_phy_smdk6410(x)
 #else
@@ -103,7 +105,7 @@
 #endif
 #endif
 //bxl@hhtech
-#define CONFIG_DRIVER_DM9000    1
+#undef CONFIG_DRIVER_DM9000   
 #define CONFIG_DM9000_BASE      0x18000300
 #define CONFIG_DM9000_USE_16BIT
 #define DM9000_IO                       CONFIG_DM9000_BASE
@@ -113,7 +115,7 @@
  */
 #define CONFIG_SERIAL1          1	/* we use SERIAL 1 on SMDK6400 */
 
-#define CFG_HUSH_PARSER			/* use "hush" command parser	*/
+#undef CFG_HUSH_PARSER			/* use "hush" command parser	*/
 #ifdef CFG_HUSH_PARSER
 #define CFG_PROMPT_HUSH_PS2	"> "
 #endif
@@ -130,9 +132,9 @@
 #define CONFIG_DOS_PARTITION
 #define CONFIG_SUPPORT_VFAT
 
-#define CONFIG_USB_OHCI
+#undef CONFIG_USB_OHCI
 #undef CONFIG_USB_STORAGE
-#define CONFIG_S3C_USBD
+#undef CONFIG_S3C_USBD
 
 #define USBD_DOWN_ADDR		0xc0000000
 
@@ -146,13 +148,14 @@
 
 #define CONFIG_BAUDRATE		115200
 
+#define CONFIG_MMC 
 /***********************************************************
  * Command definition
  ***********************************************************/
 #define CONFIG_COMMANDS \
 			(CONFIG_CMD_DFL	| \
 			CFG_CMD_CACHE	| \
-			CFG_CMD_USB	| \
+			CFG_CMD_FAT	| \
 			CFG_CMD_REGINFO	| \
 			CFG_CMD_LOADS	| \
 			CFG_CMD_LOADB	| \
@@ -164,13 +167,28 @@
 			CFG_CMD_PING	| \
 			CFG_CMD_ELF)	\
 			& ~(CFG_CMD_AUTOSCRIPT	| \
+			        CFG_CMD_DATE	| \
+			        CFG_CMD_PING	| \
 				CFG_CMD_BOOTD	| \
+			        CFG_CMD_ONENAND	| \
 				CFG_CMD_IMI	| \
 				CFG_CMD_RUN	| \
 				CFG_CMD_CONSOLE	| \
 				CFG_CMD_DOCG3P3 | \
-				CFG_CMD_EEPROM | \
-				CFG_CMD_I2C	 | \
+				CFG_CMD_EEPROM  | \
+				CFG_CMD_USB	| \
+				CFG_CMD_REGINFO	| \
+				CFG_CMD_LOADS	| \
+				CFG_CMD_LOADB	| \
+				CFG_CMD_I2C	| \
+				CFG_CMD_MOVINAND| \
+				CFG_CMD_ELF	| \
+				CFG_CMD_BDI     | \
+				CFG_CMD_CACHE	| \
+				CFG_CMD_IMLS    | \
+				CFG_CMD_ITEST   | \
+				CFG_CMD_MISC    | \
+	CFG_CMD_NAND | CFG_CMD_NET | CFG_CMD_ECHO | \
 				0)
 
 /* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
@@ -320,7 +338,11 @@
 #ifndef CONFIG_SMDK6410_X5A
 
 #define DMC1_MEM_CFG		0x00010012	/* Supports one CKE control, Chip1, Burst4, Row/Column bit */
+#ifdef CONFIG_HHTECH_MINIPMP
+#define DMC1_MEM_CFG2		0x945
+#else
 #define DMC1_MEM_CFG2		0xB45
+#endif
 #define DMC1_CHIP0_CFG		0x150F8
 #define DMC_DDR_32_CFG		0x0 		/* 32bit, DDR */
 
@@ -394,8 +416,8 @@
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
  */
-#define CFG_MAX_FLASH_BANKS	0	/* max number of memory banks */
-#define CFG_MAX_FLASH_SECT	1024
+#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks */
+#define CFG_MAX_FLASH_SECT	19
 #define CONFIG_AMD_LV800
 #define PHYS_FLASH_SIZE		0x100000
 
@@ -423,7 +445,7 @@
 #endif
 #define CFG_PHY_UBOOT_BASE	MEMORY_BASE_ADDRESS + 0x7e00000
 
-#define CFG_ENV_OFFSET		0x0003C000
+#define CFG_ENV_OFFSET		0x0004000
 
 /* NAND configuration */
 #define CFG_MAX_NAND_DEVICE     1
@@ -439,23 +461,27 @@
 #define CFG_NAND_YAFFS_WRITE	1  /* support yaffs write */
 
 /* Boot configuration (define only one of next 3) */
-//#define CONFIG_BOOT_NOR
-#define CONFIG_BOOT_NAND
+#define CONFIG_BOOT_NOR
+//#define CONFIG_BOOT_NAND
 //#define CONFIG_BOOT_MOVINAND
 //#define CONFIG_BOOT_ONENAND
 //#define CONFIG_BOOT_ONENAND_IROM
 
-#define	CONFIG_NAND
+#undef	CONFIG_NAND
 //#define CONFIG_ONENAND
-#define CONFIG_MOVINAND
+#undef CONFIG_MOVINAND
 
 /* Settings as above boot configuration */
 #if defined(CONFIG_BOOT_NAND)
+#undef CFG_ENV_OFFSET
+#undef CFG_ENV_SIZE
+#define CFG_ENV_OFFSET		(0x00180000)
+#define CFG_ENV_SIZE            (0x40000)
 #define CFG_ENV_IS_IN_NAND
-#define CFG_NAND_LARGEPAGE_SAVEENV
+#undef CFG_NAND_LARGEPAGE_SAVEENV
 #define CFG_NAND_HWECC
 //#define CFG_NAND_FLASH_BBT
-#define CONFIG_BOOTCOMMAND	"nand read c0008000 40000 a00000;bootm c0008000"
+#define CONFIG_BOOTCOMMAND	"nand read c0008000 200000 a00000;bootm c0008000"
 #elif defined(CONFIG_BOOT_MOVINAND)
 #define CFG_ENV_IS_IN_MOVINAND
 #define CONFIG_BOOTCOMMAND	"movi read zImage c0008000;bootm c0008000"
@@ -463,6 +489,10 @@
 #define CFG_ONENAND_BASE 	(0x70100000)
 #define CFG_MAX_ONENAND_DEVICE	1
 #define CFG_ENV_IS_IN_ONENAND
+#define CONFIG_BOOTCOMMAND	"onenand read c0008000 40000 1c0000;bootm c0008000"
+#elif defined(CONFIG_BOOT_NOR)
+#define CFG_ENV_OFFSET		0x0004000
+#define CFG_ENV_IS_IN_FLASH
 #define CONFIG_BOOTCOMMAND	"onenand read c0008000 40000 1c0000;bootm c0008000"
 #else
 # error Define one of CONFIG_BOOT_{NAND|MOVINAND|ONENAND|ONENAND_IROM}
