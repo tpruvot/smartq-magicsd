@@ -28,6 +28,9 @@
 
 
 #define S3C6410_POP_A 1
+#ifdef HHTECH_MINIPMP
+  #undef S3C6410_POP_A
+#endif
 
 #define set_pll(mdiv, pdiv, sdiv)	(1<<31 | mdiv<<16 | pdiv<<8 | sdiv)
 
@@ -401,11 +404,19 @@ start_code:
 
 	/* set GPIO to enable UART */
 	@ GPIO setting for UART
+#ifdef HHTECH_MINIPMP
+	ldr	r0, =ELFIN_GPIO_BASE
+	ldr	r1, =0x2222
+	str   	r1, [r0, #GPACON_OFFSET]
+
+	ldr	r0, =ELFIN_UART_BASE + ELFIN_UART0_OFFSET	@0x7F005c00 uart 0
+#else
 	ldr	r0, =ELFIN_GPIO_BASE
 	ldr	r1, =0x2222
 	str   	r1, [r0, #GPBCON_OFFSET]
 
 	ldr	r0, =ELFIN_UART_BASE + ELFIN_UART3_OFFSET	@0x7F005c00 uart 3
+#endif
 	mov	r1, #0x0
 	str	r1, [r0, #UFCON_OFFSET]
 	str	r1, [r0, #UMCON_OFFSET]
