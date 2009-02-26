@@ -44,6 +44,31 @@ const struct board_api *boards[] = {
 struct board_api const * this_board;
 extern int is_jtag;
 
+#ifdef HHTECH_MINIPMP
+#define RD_MEM_ADDR          (0x53000000) // u-boot run here
+#define UBOOT_BLKS           (256*2)      // max size is 256K
+
+#define globalBlockSizeHide (*((volatile unsigned int*)(0x0C004000-0x4)))
+#define CHANNEL             ((*(volatile u32*)0x0C003FEC == 0x7c300000) ? 1 : 0)
+#define SDHC                (*(volatile u32*)0x0C003FF8 & 0x01)
+/**
+ * * This Function copies SD/MMC Card Data to memory.
+ * * Always use EPLL source clock.
+ * * @param channel : HSMMC Controller channel number ( Not support. Depend on GPN15, GPN14 and GPN13 )
+ * * @param StartBlkAddress : Source card(SD/MMC) Address.(It must block address.)
+ * * @param blockSize : Number of blocks to copy.
+ * * @param memoryPtr : Buffer to copy from.
+ * * @param with_init : reinitialize or not
+ * * @return bool(unsigend char) - Success or failure.
+ * */
+#define CopyMMCtoMem(z,a,b,c,e) (((u8(*)(int, unsigned int, unsigned short, unsigned int*, u8)) \
+	    (*((unsigned int *)0x0C004008)))(z,a,b,c,e))
+
+#include <s3c6410.h>
+void led_set(int on);
+int do_load_uboot(void);
+#endif
+
 #include <serial-s3c64xx.h>
 
 void start_qi(void)
@@ -52,6 +77,9 @@ void start_qi(void)
 	int board = 0;
 	unsigned int sd_sectors = 0;
 
+#ifdef HHTECH_MINIPMP
+	led_set(0);
+#endif
 	/*
 	 * well, we can be running on this CPU two different ways.
 	 *
@@ -97,10 +125,35 @@ void start_qi(void)
 	puts(stringify2(BUILD_DATE) "  Copyright (C) 2008 Openmoko, Inc.\n\n");
 
 #ifdef HHTECH_MINIPMP
-	sd_sectors = 0;
+	if( (flag = do_load_uboot()) != 1) {
+	    unsigned int channel = CHANNEL;
+
+	    // uboot max size is 256K
+	    if(SDHC) sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1025;
+	    else     sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1;
+
+	    flag = (int)CopyMMCtoMem(channel, sd_sectors, UBOOT_BLKS,
+		(u32*)RD_MEM_ADDR, 0);
+//	    puts("BAS:"); print32(*(u32*)0x0C003FEC); puts("\n");
+//	    puts("RCA:"); print32(*(u32*)0x0C003FF8); puts("\n");
+//	    puts("BLS:"); print32(*(u32*)0x0C003FFC); puts("\n");
+//	    puts("READ print\n");
+//	    print32(*(u32*)(RD_MEM_ADDR+0x0));
+//	    print32(*(u32*)(RD_MEM_ADDR+0x4));
+//	    print32(*(u32*)(RD_MEM_ADDR+0x8));
+//	    print32(*(u32*)(RD_MEM_ADDR+0xc));
+//	    print32(*(u32*)(RD_MEM_ADDR+0x10));
+//	    puts("--END\n");
+	}
+
+	puts("Read SDMMC");print8(CHANNEL);
+	if(SDHC) puts(" sdhc");
+	else     puts(" sd");
+	if(flag) puts(" uboot success\n");
+	else     puts(" uboot fail\n");
+	led_set(1);
 
 #else
-
 	if (!is_jtag) {
 		/*
 		* We got the first 8KBytes of the bootloader pulled into the
@@ -143,3 +196,75 @@ void start_qi(void)
 	bootloader_second_phase();
 #endif
 }
+
+#ifdef HHTECH_MINIPMP
+typedef struct _firmware_fileheader {
+    uint32_t magic;        // '2009'
+    uint32_t check_sum; // for 8 ~ .fh_size 
+    uint32_t fh_size;
+    uint32_t version;      // major.minor.revision.xxx, each section in 8-bits
+    uint32_t date;          // seconds since the Epoch
+    char vendor[32];       // XXX: uint32_t vendor_string_len; char vendor_string[] 
+    //uint32_t nand_off_end1=16M/512, nand_off_end2=8M/512;  // offset from INAND END(BLOCKS)
+    uint32_t component_count /* = 4*/;
+    struct {
+	struct {
+	    uint32_t offset, size;
+	} file, nand;
+	uint32_t check_sum;
+    }qi, u_boot, zimage, initramfs, rootfs; // components[];
+}FirmHead;
+
+#define HEAD_MAGIC            0x39000032 // 2009
+#define BLOCK_SIZE            (512)
+#define INAND_KERNEL0_BEND    ((8<<20)/BLOCK_SIZE)   // 8M
+#define INAND_KERNEL1_BEND    ((16<<20)/BLOCK_SIZE)  // 16M
+static int do_read_inand(int ch, unsigned long offset_end_blk)
+{
+    unsigned long start = 0, cnt = 0;
+    int ret = 0;
+
+    FirmHead *fh = (FirmHead*)RD_MEM_ADDR;
+    start = globalBlockSizeHide - offset_end_blk;
+
+    ret = (int)CopyMMCtoMem(ch, start, 1, (u32*)fh, 0);
+
+    if(fh->magic != HEAD_MAGIC) {
+	puts("Error magic\n");
+	return -1;
+    }
+
+    start += fh->u_boot.nand.offset;
+    cnt   = (fh->u_boot.nand.size / BLOCK_SIZE) + 1;
+
+
+    return (int)CopyMMCtoMem(ch, start, cnt, (u32*)fh, 0);
+}
+
+int do_load_uboot(void)
+{
+    int ret, channel = CHANNEL;
+
+    ret = do_read_inand(channel, INAND_KERNEL0_BEND);
+
+    if(ret != 1) ret = do_read_inand(channel, INAND_KERNEL1_BEND);
+
+    return ret;
+}
+
+// led is contrl by GPN12, low is ON
+void led_set(int on)
+{
+    unsigned long val;
+
+    val = GPNCON_REG;
+    if(!on) val |= (0x01<<(12*2));
+    else   val &= ~(0x03<<(12*2));
+    GPNCON_REG = val;
+
+    val = GPNDAT_REG;
+    if(!on) val |= (0x01<<12);
+    else    val &= ~(0x01<<12);
+    GPNDAT_REG = val;
+}
+#endif
