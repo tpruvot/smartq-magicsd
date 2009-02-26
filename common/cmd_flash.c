@@ -278,6 +278,50 @@ flash_fill_sect_ranges (ulong addr_first, ulong addr_last,
 	return rcode;
 }
 
+int do_fwrite ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+    int ret = 0;
+    ulong addr, offset, size;
+    ulong bank = 0;
+
+    if(argc <= 3) {
+	printf("Usage:\n\t%s\n", cmdtp->usage);
+	return -1;
+    }
+
+    addr = simple_strtoul(argv[1], NULL, 16);
+    offset = simple_strtoul(argv[2], NULL, 16);
+    size = simple_strtoul(argv[3], NULL, 16);
+    if(argc > 3) bank = simple_strtoul(argv[4], NULL, 10);
+
+    ret = write_buff(&flash_info[bank], (unsigned char*)addr, offset, size);
+    printf("Write ret:%d,%s\n", ret, ret ? "FAIL" : "Success");
+    return ret;
+}
+
+int do_fread ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+    int ret = 0;
+    ulong addr, offset, size;
+    ulong bank = 0;
+
+    if(argc <= 3) {
+	printf("Usage:\n\t%s\n", cmdtp->usage);
+	return -1;
+    }
+
+    addr = simple_strtoul(argv[1], NULL, 16);
+    offset = simple_strtoul(argv[2], NULL, 16);
+    size = simple_strtoul(argv[3], NULL, 16);
+    if(argc > 3) bank = simple_strtoul(argv[4], NULL, 10);
+
+    ret = read_buff(&flash_info[bank], (unsigned char*)addr, offset, size);
+    printf("Read Data ret:%d\n", ret);
+    return ret;
+}
+
+
+
 int do_flinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	ulong bank;
@@ -687,6 +731,20 @@ U_BOOT_CMD(
 	"flinfo  - print FLASH memory information\n",
 	"\n    - print information for all FLASH memory banks\n"
 	"flinfo N\n    - print information for FLASH memory bank # N\n"
+);
+
+U_BOOT_CMD(
+	fwrite,    4,    1,    do_fwrite,
+	"fwrite  - write data to flash\n",
+	"\n    - write data to  FLASH banks\n"
+	"fwrite mem offset size\n    - write mem data to flash(offset) # N\n"
+);
+
+U_BOOT_CMD(
+	fread,    4,    1,    do_fread,
+	"fread   - read data from flash\n",
+	"\n    - read data to memory\n"
+	"fread addr offset size\n    - read flash(offset) data to addr # N\n"
 );
 
 U_BOOT_CMD(

@@ -27,6 +27,8 @@
 ulong myflush (void);
 
 
+#define NORFLASH_8BIT  // default is 16BIT
+
 #define FLASH_BANK_SIZE	PHYS_FLASH_SIZE
 #define MAIN_SECT_SIZE  0x10000	/* 64 KB */
 
@@ -41,8 +43,13 @@ flash_info_t flash_info[CFG_MAX_FLASH_BANKS];
 #define CMD_PROGRAM		0x000000A0
 #define CMD_UNLOCK_BYPASS	0x00000020
 
+#ifdef NORFLASH_8BIT
+#define MEM_FLASH_ADDR1		(*(volatile u8 *)(CFG_FLASH_BASE + (0x00000AAA)))
+#define MEM_FLASH_ADDR2		(*(volatile u8 *)(CFG_FLASH_BASE + (0x00000555)))
+#else
 #define MEM_FLASH_ADDR1		(*(volatile u16 *)(CFG_FLASH_BASE + (0x00000555 << 1)))
 #define MEM_FLASH_ADDR2		(*(volatile u16 *)(CFG_FLASH_BASE + (0x000002AA << 1)))
+#endif
 
 #define BIT_ERASE_DONE		0x00000080
 #define BIT_RDY_MASK		0x00000080
@@ -153,13 +160,12 @@ void flash_print_info (flash_info_t * info)
 	printf ("  Size: %ld MB in %d Sectors\n",
 		info->size >> 20, info->sector_count);
 
-	printf ("  Sector Start Addresses:");
+	printf ("  Sector Start Addresses:\n");
 	for (i = 0; i < info->sector_count; i++) {
-		if ((i % 5) == 0) {
-			printf ("\n   ");
-		}
-		printf (" %08lX%s", info->start[i],
-			info->protect[i] ? " (RO)" : "     ");
+	    unsigned char *p = (unsigned char*)info->start[i];
+	    printf (" %08lX%s:%02x %02x %02x %02x %02x %02x %02x %02x %02x\n", 
+		info->start[i], info->protect[i] ? " (RO)" : "     ", p[0], 
+		p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 	}
 	printf ("\n");
 
@@ -218,7 +224,11 @@ int flash_erase (flash_info_t * info, int s_first, int s_last)
 		reset_timer_masked ();
 
 		if (info->protect[sect] == 0) {	/* not protected */
+#ifdef NORFLASH_8BIT
+			vu_char *addr = (vu_char *) (info->start[sect]);
+#else
 			vu_short *addr = (vu_short *) (info->start[sect]);
+#endif
 
 			MEM_FLASH_ADDR1 = CMD_UNLOCK1;
 			MEM_FLASH_ADDR2 = CMD_UNLOCK2;
@@ -255,15 +265,17 @@ int flash_erase (flash_info_t * info, int s_first, int s_last)
 			MEM_FLASH_ADDR1 = CMD_READ_ARRAY;
 
 			if (chip == ERR) {
+				printf("Error erase: result=0x%x,adr=0x%x\n", result, addr);
 				rc = ERR_PROG_ERROR;
 				goto outahere;
 			}
 			if (chip == TMO) {
+				printf("Error erase: timeout,result=0x%x,adr=0x%x\n", result, addr);
 				rc = ERR_TIMOUT;
 				goto outahere;
 			}
 
-			printf ("ok.\n");
+			printf ("ok.result=0x%x\n", result);
 		} else {	/* it was protected */
 
 			printf ("protected!\n");
@@ -292,8 +304,13 @@ int flash_erase (flash_info_t * info, int s_first, int s_last)
 
 volatile static int write_hword (flash_info_t * info, ulong dest, ushort data)
 {
+#ifdef NORFLASH_8BIT
+	vu_char *addr = (vu_char *) dest;
+	uchar result;
+#else
 	vu_short *addr = (vu_short *) dest;
 	ushort result;
+#endif
 	int rc = ERR_OK;
 	int cflag, iflag;
 	int chip;
@@ -364,6 +381,26 @@ volatile static int write_hword (flash_info_t * info, ulong dest, ushort data)
 	return rc;
 }
 
+int read_buff (flash_info_t * info, uchar *dst, ulong addr, ulong cnt)
+{
+	int i;
+
+#ifdef NORFLASH_8BIT
+	uchar *ptr = (uchar*)dst;
+	for( i = 0; i < cnt; i++) {
+	    *ptr++ = *(uchar*)(addr + i);
+	}
+#else
+	vu_short *ptr = (vu_short*)dst;
+	if(cnt % 2) cnt += 1;
+	for( i = 0; i < cnt; i+=2) {
+	    *ptr = *(vu_char*)(addr + i);
+	}
+
+#endif
+	return ERR_OK;
+}
+
 /*-----------------------------------------------------------------------
  * Copy memory to flash.
  */
@@ -377,6 +414,27 @@ int write_buff (flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 
 	wp = (addr & ~1);	/* get lower word aligned address */
 
+#ifdef NORFLASH_8BIT
+	i = cp = l = 0;
+	while (cnt >= 1) {
+		data = ((*((vu_char *) src)) & 0x00FF);
+		if ((rc = write_hword (info, wp, data)) != 0) {
+			printf("maybe not erase\n");
+			return (rc);
+		}
+		src += 1;
+		wp += 1;
+		cnt -= 1;
+		l += 1;
+		if(l % 0x800 == 0){ // 2K
+		    i += 1;
+		    putc('.');
+		    if(i % 16 == 0) printf("\n"); // 64K
+		}
+	}
+	return ERR_OK;
+
+#else
 	/*
 	 * handle unaligned start bytes
 	 */
@@ -430,4 +488,5 @@ int write_buff (flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 	}
 
 	return write_hword (info, wp, data);
+#endif
 }
