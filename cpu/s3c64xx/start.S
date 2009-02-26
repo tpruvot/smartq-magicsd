@@ -425,6 +425,7 @@ _mmu_table_base:
 	.word mmu_table
 #endif
 
+#ifdef CONFIG_BOOT_NAND
 /*
  * copy U-Boot to SDRAM and jump to ram (from NAND or OneNAND)
  * r0: size to be compared
@@ -464,6 +465,7 @@ copy_failed:
 compare_failed:
 	nop			/* compare failed */
 	b	compare_failed
+#endif
 
 /*
  * we assume that cache operation is done before. (eg. cleanup_before_linux())
