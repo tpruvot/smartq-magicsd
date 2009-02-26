@@ -9,6 +9,12 @@ CROSS_COMPILE=${CROSS_PATH}/bin/arm-angstrom-linux-gnueabi-
 COMPILER_LIB_PATH_PRE=${CROSS_PATH}/lib/gcc/arm-angstrom-linux-gnueabi
 COMPILER_LIB_PATH=${COMPILER_LIB_PATH_PRE}/`ls ${COMPILER_LIB_PATH_PRE}`
 
+CPU     = s3c6410
+CROSS_PATH=/usr/local/gcc-arm-linux-4.3.2
+CROSS_COMPILE=${CROSS_PATH}/bin/arm-none-linux-gnueabi-
+COMPILER_LIB_PATH_PRE=${CROSS_PATH}/lib/gcc/arm-none-linux-gnueabi/4.3.2
+COMPILER_LIB_PATH=${COMPILER_LIB_PATH_PRE}
+
 AS	= $(CROSS_COMPILE)as
 LD	= $(CROSS_COMPILE)ld
 CC	= $(CROSS_COMPILE)gcc

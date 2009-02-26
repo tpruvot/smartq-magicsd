@@ -16,7 +16,7 @@
 
 include config.mk
 
-BUILD_DATE := $(shell date)
+BUILD_DATE := $(shell date +%D-%T)
 BUILD_HOST := $(shell hostname)
 BUILD_BRANCH := $(shell git branch | grep ^\* | cut -d' ' -f2)
 BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut -b1-16)
@@ -30,7 +30,7 @@ CFLAGS	= -Wall -Werror -I $(INCLUDE) -g -c -Os -fno-strict-aliasing -mlong-calls
 	  -fno-common -ffixed-r8 -msoft-float -fno-builtin -ffreestanding \
 	  -march=armv4t -mno-thumb-interwork -Wstrict-prototypes \
 	  -DBUILD_HOST="${BUILD_HOST}" -DBUILD_VERSION="${BUILD_VERSION}" \
-	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}"
+	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DHHTECH_MINIPMP
 LDFLAGS = 
 
 S_SRCS	= $(wildcard src/cpu/$(CPU)/*.S)
