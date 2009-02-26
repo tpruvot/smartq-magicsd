@@ -88,6 +88,7 @@ extern void cs8900_get_enetaddr (uchar * addr);
 //bxl@hhtech
 #ifdef CONFIG_DRIVER_DM9000
 extern void dm9000_get_enetaddr (uchar * addr);
+extern u16 default_enetaddr[];
 #endif
 
 #ifdef CONFIG_DRIVER_RTL8019
@@ -399,6 +400,9 @@ void start_armboot (void)
 			gd->bd->bi_enetaddr[reg] = s ? simple_strtoul (s, &e, 16) : 0;
 			if (s)
 				s = (*e) ? e + 1 : e;
+#ifdef CONFIG_DRIVER_DM9000
+			default_enetaddr[reg] = gd->bd->bi_enetaddr[reg];
+#endif
 		}
 
 #ifdef CONFIG_HAS_ETH1
@@ -461,6 +465,16 @@ void start_armboot (void)
 #endif
 	eth_initialize(gd->bd);
 #endif
+
+#ifdef  CONFIG_HHTECH_MINIPMP
+	if (tstc() && getc() == ' ')    // here test press key
+	    setenv("bootcmd", NULL); 
+	else {
+		init_hard_last(0, 0);
+		do_start_firmware(1, NULL);
+	}
+#endif
+  
 	/* main_loop() can return to retry autoboot, if so just run it again. */
 	for (;;) {
 		main_loop ();

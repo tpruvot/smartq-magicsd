@@ -27,6 +27,7 @@ LIB	= lib$(BOARD).a
 
 OBJS	:= smdk6410.o flash.o
 SOBJS	:= lowlevel_init.o
+OBJS+= cmd_hhtech.o misc.o
 
 $(LIB):	$(OBJS) $(SOBJS)
 	$(AR) crv $@ $(SOBJS) $(OBJS)
