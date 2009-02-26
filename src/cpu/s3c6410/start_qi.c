@@ -34,7 +34,9 @@
 extern void bootloader_second_phase(void);
 
 const struct board_api *boards[] = {
+#ifndef HHTECH_MINIPMP
 			&board_api_gta03,
+#endif
 			&board_api_smdk6410,
 			NULL /* always last */
 };
@@ -94,6 +96,11 @@ void start_qi(void)
 
 	puts(stringify2(BUILD_DATE) "  Copyright (C) 2008 Openmoko, Inc.\n\n");
 
+#ifdef HHTECH_MINIPMP
+	sd_sectors = 0;
+
+#else
+
 	if (!is_jtag) {
 		/*
 		* We got the first 8KBytes of the bootloader pulled into the
@@ -120,6 +127,7 @@ void start_qi(void)
 
 	/* all of Qi is in memory now, stuff outside steppingstone too */
 
+
 	if (this_board->port_init)
 		this_board->port_init();
 
@@ -133,4 +141,5 @@ void start_qi(void)
 	 * jump to bootloader_second_phase() running from DRAM copy
 	 */
 	bootloader_second_phase();
+#endif
 }

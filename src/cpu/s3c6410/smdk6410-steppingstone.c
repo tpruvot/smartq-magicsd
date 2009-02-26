@@ -17,6 +17,7 @@ static void putc_smdk6410(char c)
 	serial_putc_s3c64xx(SMDK6410_DEBUG_UART, c);
 }
 
+#ifndef HHTECH_MINIPMP
 int sd_card_init_smdk6410(void)
 {
 	extern int s3c6410_mmc_init(int verbose);
@@ -32,6 +33,7 @@ unsigned long s3c6410_mmc_bread(int dev_num, unsigned long blknr,
 
 	return s3c6410_mmc_bread(0, start512, blocks512, buf);
 }
+#endif
 
 /*
  * our API for bootloader on this machine
@@ -42,6 +44,10 @@ const struct board_api board_api_smdk6410 = {
 	.linux_mem_start = 0x50000000,
 	.linux_mem_size = (128 * 1024 * 1024),
 	.linux_tag_placement = 0x50000000 + 0x100,
+#ifdef HHTECH_MINIPMP
+	.is_this_board = is_this_board_smdk6410,
+	.putc = putc_smdk6410,
+#else
 	.get_board_variant = get_board_variant_smdk6410,
 	.is_this_board = is_this_board_smdk6410,
 	.putc = putc_smdk6410,
@@ -69,5 +75,6 @@ const struct board_api board_api_smdk6410 = {
 			.commandline_append = "root=/dev/mmcblk0p3 "
 		},
 	},
+#endif
 };
 

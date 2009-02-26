@@ -23,6 +23,7 @@ BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut
 BUILD_VERSION := ${BUILD_BRANCH}_${BUILD_HEAD}
 
 LDS	= src/cpu/$(CPU)/qi.lds
+LDS	= src/cpu/$(CPU)/hhqi.lds
 INCLUDE	= include
 IMAGE_DIR	= image
 TOOLS	= tools
@@ -38,6 +39,8 @@ S_OBJS	= $(patsubst %.S,%.o, $(S_SRCS))
 C_SRCS	= $(wildcard src/*.c) \
 	  $(wildcard src/drivers/*.c)  $(wildcard src/fs/*.c) \
 	  $(wildcard src/cpu/$(CPU)/*.c)
+C_SRCS = src/cpu/$(CPU)/start_qi.c src/cpu/$(CPU)/serial-s3c64xx.c \
+	 src/cpu/$(CPU)/smdk6410-steppingstone.c src/utils.c
 C_OBJS	= $(patsubst %.c,%.o, $(C_SRCS))
 
 SRCS	= ${S_SRCS} ${C_SRCS}
