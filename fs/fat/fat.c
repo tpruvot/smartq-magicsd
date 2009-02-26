@@ -52,6 +52,7 @@ static int cur_part = 1;
 #define DOS_PART_TBL_OFFSET	0x1be
 #define DOS_PART_MAGIC_OFFSET	0x1fe
 #define DOS_FS_TYPE_OFFSET	0x36
+#define DOS32_FS_TYPE_OFFSET	0x52
 
 int disk_read (__u32 startblock, __u32 getsize, __u8 * bufptr)
 {
@@ -80,21 +81,34 @@ fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 	}
 	if (buffer[DOS_PART_MAGIC_OFFSET] != 0x55 ||
 		buffer[DOS_PART_MAGIC_OFFSET + 1] != 0xaa) {
-		/* no signature found */
+#ifdef DEBUG
+	     	int j, size = SECTOR_SIZE;
+		for(j = 0; j < size; j++)       {
+		    if(j%16 == 0) printf("\n 0x%04X\t ---",j);
+		    printf(" %02x ", (uchar)(*(buffer+j)));
+		}
+		printf("\n");
+#endif
+		printf("no signature found\n");
 		return -1;
 	}
-	if(!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET],"FAT",3)) {
-		/* ok, we assume we are on a PBR only */
-		cur_part = 1;
-		part_offset=0;
-	}
-	else {
+
 #if (CONFIG_COMMANDS & CFG_CMD_IDE) || (CONFIG_COMMANDS & CFG_CMD_SCSI) || \
-    (CONFIG_COMMANDS & CFG_CMD_USB) || defined(CONFIG_SYSTEMACE)
+    (CONFIG_COMMANDS & CFG_CMD_USB) || defined(CONFIG_SYSTEMACE) || \
+    (CONFIG_COMMANDS & CFG_CMD_MMC) || defined(CONFIG_MMC)
 		disk_partition_t info;
-		if(!get_partition_info(dev_desc, part_no, &info)) {
+		init_part(dev_desc);
+		if(part_no && !get_partition_info(dev_desc, part_no, &info)) {
 			part_offset = info.start;
 			cur_part = part_no;
+		}
+		else if (!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET],"FAT",3) ||
+			!strncmp((char *)&buffer[DOS32_FS_TYPE_OFFSET],"FAT32",5)) {
+			/* ok, we assume we are on a PBR only */
+			cur_part = 1;
+			part_offset = 0;	// unknow type
+			printf("Partitionless FAT system,PartOffset=%d.\n", part_offset);
+			return 0;
 		}
 		else {
 			printf ("** Partition %d not valid on device %d **\n",part_no,dev_desc->dev);
@@ -109,7 +123,6 @@ fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 		part_offset=32;
 		cur_part = 1;
 #endif
-	}
 	return 0;
 }
 
@@ -342,7 +355,7 @@ get_contents(fsdata *mydata, dir_entry *dentptr, __u8 *buffer,
 			newclust = get_fatent(mydata, endclust);
 			if((newclust -1)!=endclust)
 				goto getit;
-			if (newclust <= 0x0001 || newclust >= 0xfff0) {
+			if (newclust <= 0x0001 || newclust >= 0xfffffff0) {	// XXX:
 				FAT_DPRINT("curclust: 0x%x\n", newclust);
 				FAT_DPRINT("Invalid FAT entry\n");
 				return gotsize;
@@ -377,7 +390,7 @@ getit:
 		filesize -= actsize;
 		buffer += actsize;
 		curclust = get_fatent(mydata, endclust);
-		if (curclust <= 0x0001 || curclust >= 0xfff0) {
+		if (curclust <= 0x0001 || curclust >= 0xfffffff0) {		// XXX:
 			FAT_DPRINT("curclust: 0x%x\n", curclust);
 			FAT_ERROR("Invalid FAT entry\n");
 			return gotsize;
@@ -425,7 +438,12 @@ slot2str(dir_slot *slotptr, char *l_name, int *idx)
  * into 'retdent'
  * Return 0 on success, -1 otherwise.
  */
+#ifdef	CONFIG_HHTECH_MINIPMP
+#include <malloc.h>
+__u8*	 get_vfatname_block;
+#else
 __u8	 get_vfatname_block[MAX_CLUSTSIZE];
+#endif
 static int
 get_vfatname(fsdata *mydata, int curclust, __u8 *cluster,
 	     dir_entry *retdent, char *l_name)
@@ -449,7 +467,7 @@ get_vfatname(fsdata *mydata, int curclust, __u8 *cluster,
 
 		slotptr--;
 		curclust = get_fatent(mydata, curclust);
-		if (curclust <= 0x0001 || curclust >= 0xfff0) {
+		if (curclust <= 0x0001 || curclust >= 0xfffffff0) {		// XXX:
 			FAT_DPRINT("curclust: 0x%x\n", curclust);
 			FAT_ERROR("Invalid FAT entry\n");
 			return -1;
@@ -511,7 +529,11 @@ mkcksum(const char *str)
  * Get the directory entry associated with 'filename' from the directory
  * starting at 'startsect'
  */
+#ifdef	CONFIG_HHTECH_MINIPMP
+__u8* get_dentfromdir_block;
+#else
 __u8 get_dentfromdir_block[MAX_CLUSTSIZE];
+#endif
 static dir_entry *get_dentfromdir (fsdata * mydata, int startsect,
 				   char *filename, dir_entry * retdent,
 				   int dols)
@@ -584,7 +606,7 @@ static dir_entry *get_dentfromdir (fsdata * mydata, int startsect,
 		    continue;
 		}
 	    }
-	    if (dentptr->name[0] == 0) {
+	    if (dentptr->name[0] == 0 && dentptr->ext[0] == 0) {
 		if (dols) {
 		    printf ("\n%d file(s), %d dir(s)\n\n", files, dirs);
 		}
@@ -716,8 +738,11 @@ read_bootsectandvi(boot_sector *bs, volume_info *volinfo, int *fatsize)
 	return -1;
 }
 
-
+#ifdef	CONFIG_HHTECH_MINIPMP
+__u8* do_fat_read_block;
+#else
 __u8 do_fat_read_block[MAX_CLUSTSIZE];  /* Block buffer */
+#endif
 long
 do_fat_read (const char *filename, void *buffer, unsigned long maxsize,
 	     int dols)
@@ -771,6 +796,14 @@ do_fat_read (const char *filename, void *buffer, unsigned long maxsize,
 		mydata->rootdir_sect, mydata->rootdir_sect * SECTOR_SIZE,
 		rootdir_size, mydata->data_begin);
     FAT_DPRINT ("Cluster size: %d\n", mydata->clust_size);
+
+#ifdef	CONFIG_HHTECH_MINIPMP
+    {	ulong clust_size_bytes = mydata->clust_size * SECTOR_SIZE;
+	if (!do_fat_read_block) do_fat_read_block = (u8*)malloc(clust_size_bytes);
+	if (!get_vfatname_block) get_vfatname_block = (u8*)malloc(clust_size_bytes);
+	if (!get_dentfromdir_block) get_dentfromdir_block = (u8*)malloc(clust_size_bytes);
+    }
+#endif
 
     /* "cwd" is always the root... */
     while (ISDIRDELIM (*filename))
@@ -997,7 +1030,17 @@ file_fat_detectfs(void)
 	return 0;
 }
 
-
+#ifdef	CONFIG_HHTECH_MINIPMP
+void free_complain_memory(void)
+{
+	if (do_fat_read_block) 
+		free(do_fat_read_block), do_fat_read_block = NULL;
+	if (get_vfatname_block) 
+		free(get_vfatname_block), get_vfatname_block = NULL;
+	if (get_dentfromdir_block) 
+		free(get_dentfromdir_block), get_dentfromdir_block = NULL;
+}
+#endif
 int
 file_fat_ls(const char *dir)
 {
@@ -1008,8 +1051,16 @@ file_fat_ls(const char *dir)
 long
 file_fat_read(const char *filename, void *buffer, unsigned long maxsize)
 {
+#ifdef	CONFIG_HHTECH_MINIPMP
+	int rtn = 0;
+	printf("reading %s ...",filename);
+	rtn = do_fat_read(filename, buffer, maxsize, LS_NO);
+	free_complain_memory();
+	return rtn;
+#else
 	printf("reading %s\n",filename);
 	return do_fat_read(filename, buffer, maxsize, LS_NO);
+#endif
 }
 
 #endif /* #if (CONFIG_COMMANDS & CFG_CMD_FAT) */
