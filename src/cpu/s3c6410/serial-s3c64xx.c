@@ -35,4 +35,7 @@ void serial_putc_s3c64xx(const int uart, const char c)
 		;
 
 	__REG(0x7F005000 + UTXH_OFFSET + (uart << 10)) = c;
+
+	if('\n' == c)
+	    serial_putc_s3c64xx(uart, '\r');
 }
