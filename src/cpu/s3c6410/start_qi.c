@@ -240,10 +240,9 @@ static int do_read_inand(int ch, unsigned long offset_end_blk)
     FirmHead *fh = (FirmHead*)RD_MEM_ADDR;
     start = globalBlockSizeHide - offset_end_blk;
 
-    ret = (int)CopyMMCtoMem(ch, start, 1, (u32*)fh, 0);
-
+    ret = (int)CopyMMCtoMem(ch, start, 2, (u32*)fh, 0);
     if(fh->magic != HEAD_MAGIC) {
-	puts("Error magic\n");
+	puts("Error magic "); print32(fh->magic);puts("\n");
 	return -1;
     }
 
@@ -258,9 +257,9 @@ int do_load_uboot(void)
 {
     int ret, channel = CHANNEL;
 
-    ret = do_read_inand(channel, INAND_KERNEL0_BEND);
+    ret = do_read_inand(channel, INAND_KERNEL1_BEND);
 
-    if(ret != 1) ret = do_read_inand(channel, INAND_KERNEL1_BEND);
+    if(ret != 1) ret = do_read_inand(channel, INAND_KERNEL0_BEND);
 
     return ret;
 }
