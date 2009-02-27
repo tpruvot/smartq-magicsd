@@ -134,17 +134,19 @@ void start_qi(void)
 
 	    flag = (int)CopyMMCtoMem(channel, sd_sectors, UBOOT_BLKS,
 		(u32*)RD_MEM_ADDR, 0);
-//	    puts("BAS:"); print32(*(u32*)0x0C003FEC); puts("\n");
-//	    puts("RCA:"); print32(*(u32*)0x0C003FF8); puts("\n");
-//	    puts("BLS:"); print32(*(u32*)0x0C003FFC); puts("\n");
-//	    puts("READ print\n");
-//	    print32(*(u32*)(RD_MEM_ADDR+0x0));
-//	    print32(*(u32*)(RD_MEM_ADDR+0x4));
-//	    print32(*(u32*)(RD_MEM_ADDR+0x8));
-//	    print32(*(u32*)(RD_MEM_ADDR+0xc));
-//	    print32(*(u32*)(RD_MEM_ADDR+0x10));
-//	    puts("--END\n");
 	}
+
+////    DEBUG
+//	puts("BAS:"); print32(*(u32*)0x0C003FEC); puts("\n");
+//	puts("RCA:"); print32(*(u32*)0x0C003FF8); puts("\n");
+//	puts("BLS:"); print32(*(u32*)0x0C003FFC); puts("\n");
+//	puts("READ print\n");
+//	print32(*(u32*)(RD_MEM_ADDR+0x0));
+//	print32(*(u32*)(RD_MEM_ADDR+0x4));
+//	print32(*(u32*)(RD_MEM_ADDR+0x8));
+//	print32(*(u32*)(RD_MEM_ADDR+0xc));
+//	print32(*(u32*)(RD_MEM_ADDR+0x10));
+//	puts("--END\n");
 
 	puts("Read SDMMC");print8(CHANNEL);
 	if(SDHC) puts(" sdhc");
@@ -152,6 +154,15 @@ void start_qi(void)
 	if(flag) puts(" uboot success\n");
 	else     puts(" uboot fail\n");
 	led_set(1);
+
+	// jump to bootloader running
+	board = ((ulong (*)(int))RD_MEM_ADDR)(0);
+
+	// no run here
+	while(1) {
+		led_set(0); udelay(0x100000);
+		led_set(1);udelay(0x100000);
+	}
 
 #else
 	if (!is_jtag) {
