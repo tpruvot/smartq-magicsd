@@ -129,7 +129,8 @@ void start_qi(void)
 	    unsigned int channel = CHANNEL;
 
 	    // uboot max size is 256K
-	    if(SDHC) sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1025;
+	    // SDHC globalBlockSizeHide = sact sd blk num - 1024
+	    if(SDHC) sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1;
 	    else     sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1;
 
 	    flag = (int)CopyMMCtoMem(channel, sd_sectors, UBOOT_BLKS,
@@ -149,10 +150,11 @@ void start_qi(void)
 //	puts("--END\n");
 
 	puts("Read SDMMC");print8(CHANNEL);
-	if(SDHC) puts(" sdhc");
-	else     puts(" sd");
-	if(flag) puts(" uboot success\n");
-	else     puts(" uboot fail\n");
+	if(SDHC) puts(" sdhc [");
+	else     puts(" sd [");
+	print32(sd_sectors);
+	if(flag) puts("] uboot success\n");
+	else     puts("] uboot fail\n");
 	led_set(1);
 
 	// jump to bootloader running
