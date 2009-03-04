@@ -43,13 +43,13 @@ lowlevel_init:
 
 	/* LED on only #8 */
 	ldr	r0, =ELFIN_GPIO_BASE
-	ldr	r1, =0x55540000
+	ldr	r1, =0x55550000
 	str	r1, [r0, #GPNCON_OFFSET]
 
 	ldr	r1, =0x55555555
 	str	r1, [r0, #GPNPUD_OFFSET]
 
-	ldr	r1, =0xf000
+	ldr	r1, =0xf300
 	str	r1, [r0, #GPNDAT_OFFSET]
 
 	ldr	r1, =0x55555555
