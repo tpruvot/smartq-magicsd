@@ -1125,7 +1125,7 @@ int hsmmc_init (void)
 		dbg("MMC card is detected\n");
 	} else {
 		printf("ERROR ocr 0 MB\n");
-		return 0;
+		return -11;
 	}
 
 	ocr_check = 0;
