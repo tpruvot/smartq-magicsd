@@ -33,13 +33,14 @@
 
 
 #define KEY_NONE               (0)
-#define KEY_UPGRADE            (KEY_UP)
+#define KEY_UPGRADE            (KEY_UP)      // upgrade from SD
+#define KEY_UPGRADE2           (KEY_LEFT)    // upgrade from inand
 #define KEY_POWER_ON           (KEY_POWER)
 
 
 typedef struct tag_key_info {
     unsigned short key;
-    unsigned char  gpio;   // current set maxt is 256
+    unsigned short gpio;   // current set maxt is 256
     unsigned char  vtg;    //
 }KeyInfo;
 

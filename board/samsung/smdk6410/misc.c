@@ -27,48 +27,63 @@
 
 
 KeyInfo gkeys[] = {
-//    {KEY_POWER,   ('N'-'A')<<4 + 8, 1},
+    {KEY_POWER,   ('L'-'A')*16 + 14, 0},
+    {KEY_UP,      ('N'-'A')*16 + 15, 0},
+    {KEY_DOWN,      ('N'-'A')*16 + 12, 0},
+    {KEY_LEFT,      ('N'-'A')*16 + 2, 0},
 
     {0xFFFF, 0, 0},
 };
 
-//                             A  B  C  D  E  F  G H  I  J  K   L  M  N  O  P  Q
-//static char  gpio_goups[] = {8, 7, 8, 5, 5,16, 7,10,16,12,16,15, 6,16,16,15, 9};
-static char  gpio_dat_offs[]= {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 4, 4, 4, 4, 4};
-static unsigned short gpio_group_offs[] = 
+//                    A  B  C  D  E  F  G H  I  J  K   L  M  N  O  P  Q
+//r   gpio_goups[] = {8, 7, 8, 5, 5,16, 7,10,16,12,16,15, 6,16,16,15, 9};
+// DAT offset for groups
+static char  gdat[]= {4, 4, 4, 4, 4, 4, 4, 8, 4, 4, 8, 8, 4, 4, 4, 4, 4};
+// CONF MASK BITS for groups
+static char  gcsz[]= {4, 4, 4, 4, 4, 2, 4, 4, 2, 2, 4, 4, 4, 2, 2, 2, 2};
+static unsigned short gbase[] = 
     {0x000, 0x020, 0x040, 0x060, 0x080, 0x0A0, 0x0C0, 0x0E0, 0x100, 0x120,  // A...J
      0x880, 0x810, 0x820, 0x830, // K ... N
      0x140, 0x160, 0x180, };     // O P Q
 static unsigned long  gpio_base = ELFIN_GPIO_BASE;
 
-#define  REG_BASE()      (gpio_base + gpio_group_offs[group] + ((sub > 8) ? 4: 0))
-#define  CLEAR_CON(v, n) ((v) & ~(0xF<<((((n)>=8) ? ((n)-8): (n))*4)))
-
-#define  REGIN           CLEAR_CON
-#define  REGOUT(v,n)     ((CLEAR_CON((v),(n))) | (0x01<<((((n)>=8) ? ((n)-8): (n))*4)))
-
-int gpio_direction_input(int gpio)
+static int gpio_direction_set(int gpio, int out)
 {
     int group = gpio >> 4, sub = gpio % 16;
-    unsigned int reg, val;
+    unsigned char mask = 0x03;
+    unsigned int regconf = 0, val;
 
-    reg = REG_BASE(); val = readl(reg);
-    val = REGIN(val, sub); writel(val, reg);
+    regconf = gpio_base + gbase[group];
+    if(gcsz[group] == 4) {
+	mask = 0x0F;
+	if(sub >= 8) regconf += 4;
+    }
+
+//    printf("SET: gpio=%d,regconf=0x%x\n", gpio, regconf);
+    val = readl(regconf);
+    val &= ~((mask) << (gcsz[group] * sub));
+
+    if(out) val |= ((0x01) << (gcsz[group] * sub));
+
+    writel(val, regconf);
 
     return 0;
 }
 
-int gpio_direction_output(int gpio, int dat)
+// ret : high is 1, low is 0
+int gpio_set_value(int gpio, int dat)
 {
     int group = gpio >> 4, sub = gpio % 16;
-    unsigned int reg, val;
+    unsigned int regdat = 0, val;
 
-    reg = REG_BASE(); val = readl(reg);
-    val = REGOUT(val, sub); writel(val, reg);
+    regdat = gpio_base + gbase[group] + gdat[sub];
+    if(4 == gcsz[group]) regdat += 4;
+    val = readl(regdat);
 
-    reg += gpio_dat_offs[sub];
-    val = readl(reg); val |= (1<<sub);
-    writel(val, reg);
+    if(dat) val |= (1<<sub);
+    else    val &= ~(1<<sub);
+
+    writel(val, regdat);
 
     return 0;
 }
@@ -77,13 +92,28 @@ int gpio_direction_output(int gpio, int dat)
 int gpio_get_value(int gpio)
 {
     int group = gpio >> 4, sub = gpio % 16;
-    unsigned int reg, val;
+    unsigned int regdat = 0, val;
 
-    reg = REG_BASE() + gpio_dat_offs[sub];
-    val = readl(reg);
-
+    regdat = gpio_base + gbase[group] + gdat[sub];
+    if(4 == gcsz[group]) regdat += 4;
+    val = readl(regdat);
+    
+//    printf("READ:gpio=%d,regdat=0x%x\n", gpio, regdat);
     if(val & (1<<sub)) return 1;
 
+    return 0;
+}
+
+int gpio_direction_input(int gpio)
+{
+    gpio_direction_set(gpio, 0);
+    return 0;
+}
+
+int gpio_direction_output(int gpio, int dat)
+{
+    gpio_direction_set(gpio, 1);
+    gpio_set_value(gpio, dat);
     return 0;
 }
 

@@ -105,36 +105,44 @@ static int file_check_sum(void *addr, int len)
     return ret;
 }
 
+#define GPIO_DCIN   (('L'-'A')*16 + 13)
+static int get_dc_status(void)
+{
+    gpio_direction_input(GPIO_DCIN);
 
+    return gpio_get_value(GPIO_DCIN);
+}
+
+// LED is on GPN8 and GPN9
+#define GPIO_LED_0  (('N'-'A')*16 + 8)
+#define GPIO_LED_1  (('N'-'A')*16 + 9)
+static int set_led(int flag)
+{
+    flag = flag % 4;
+
+    if(flag & 0x01) gpio_direction_output(GPIO_LED_0, 0);
+    else            gpio_direction_output(GPIO_LED_0, 1);
+
+    if(flag & 0x02) gpio_direction_output(GPIO_LED_1, 0);
+    else            gpio_direction_output(GPIO_LED_1, 1);
+
+    return 0;
+}
+
+// high poweroff, low start
+#define GPIO_POWEROFF (('K'-'A')*16 + 15)
 static int do_poweroff(u32 flag)
 {
 //	int usb = 0, key;
 	PFUNC("flag=0x%x\n", flag);
+	set_led(0); udelay(0x700000);
+	set_led(1); udelay(0x700000);
+	set_led(2); udelay(0x700000);
+	set_led(3); udelay(0x700000);
+	set_led(0); udelay(0x700000);
 
-#if 0     /* comment by whg HHTECH */
-	if(flag & 0x01) 	// close backlight
-		gLcdInfo.setbl_brightness(0);
-	
-	if(flag & 0x02) {		// clear lcd buffer 
-		memset((void*)gLcdInfo.dma_base, 0xFF, (512<<10));
-		udelay(20000);
-	}
+	while(1) gpio_direction_output(GPIO_POWEROFF, 1);
 
-Recheck:
-	usb = card_usb_plug_out();
-	key = key_read();
-	if(usb || (key & KEY_POWER_ON) ) {
-		set_led_blink(1, 50000);
-		goto Recheck;
-	}
-	
-	if(flag & 0x04)		// power down
-		mcu_power_off();
-	
-	if(flag & 0x8000) // loop power down
-		while(1) mcu_power_off();
-#endif    /* comment by WangGang   */
-	
 	return 0;
 }
 
@@ -226,6 +234,7 @@ static int do_readsd_upgrade(int dev, char *file)
     unsigned char *ptr, *ptrsrc;
     FirmHead  *fh = (FirmHead*)MEM_READ_FILE;
 
+    set_led(3);
     memset(fh, 0, sizeof(FirmHead));
     size = load_sd_file(dev, file, (u32)fh, INAND_BLOCK_SIZE);
 
@@ -268,6 +277,7 @@ int do_start_firmware(int flag, char *file)
     }
 
 #ifdef INAND_RW_DIRECT
+    set_led(2);
     if((do_read_inand(INAND_DEV, INAND_KERNEL1_BEND, 0)) 
 	|| boot_image(MEM_KERNEL_START, 0)) {
 	printf("Error for iNAND START 1\n");
@@ -312,6 +322,9 @@ int do_start_firmware(int flag, char *file)
 static int do_upgrade(int flag, int param)
 {
 #ifdef INAND_RW_DIRECT
+    if(0 == flag) goto up_from_sd;
+    
+    set_led(2);
     if((do_read_inand(INAND_DEV, INAND_KERNEL1_BEND, 1)) 
 	|| boot_image(MEM_KERNEL_START, 0)) {
 	printf("Error iNAND START 1\n");
@@ -322,6 +335,7 @@ static int do_upgrade(int flag, int param)
 	}
     }
 
+up_from_sd:
     printf("Load upgrade IMG from SD(%s)\n", FIRMWARE);
     do_readsd_upgrade(0, FIRMWARE);
 
@@ -378,8 +392,13 @@ ReRead:
     key = key_read();
 
     switch(key)	{
-	case KEY_UPGRADE:
+	case KEY_UPGRADE: // upgrade from SD
 	    do_upgrade(0, 0);
+	    do_poweroff(0x8FFF);
+	    key = 0;
+	    break;
+	case KEY_UPGRADE2:
+	    do_upgrade(1, 0);
 	    do_poweroff(0x8FFF);
 	    key = 0;
 	    break;
@@ -388,8 +407,10 @@ ReRead:
 	    break;
 	case KEY_NONE:	// no key
 	    key = 0; 
-	    PFUNC("other key and no usb,poweroff\n");
-	    do_poweroff(0x8FFF);
+	    if(get_dc_status()) {
+		PFUNC("other key and no usb,poweroff\n");
+		do_poweroff(0x8FFF);
+	    }
 	    break;
 
 	default:	// muilt key perssed
@@ -461,6 +482,7 @@ void init_hard_last(int flag, int param)
 	u32 key;
 	char *s;
 
+	set_led(1);
 	/* get_dma addr, DmaMemory = memAddr - 0x200000 
 	 * DmaLinkAddr = No Need */
 #if 0     /* comment by whg HHTECH */
@@ -479,6 +501,7 @@ void init_hard_last(int flag, int param)
 	printf("show logo end\n");
 	init_card_gpio();
 #endif    /* comment by WangGang   */
+	gpio_direction_input(GPIO_DCIN);
 	key_init();
 	
 	if(1 == flag && 1 == param)	{
@@ -701,6 +724,7 @@ static int boot_image(u32 addr, u32 addr2)
 	int argc = 2;
 	init_cmd_argv();
 
+	set_led(0);
 	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootdelay");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
@@ -839,14 +863,15 @@ int do_start (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		param = get_battery_cap();
 		printf("Get Battery=%dmV\n", param);
 	}
+#endif    /* comment by WangGang   */
 	else if(strncmp(argv[1], "led", 3) == 0) {
 		param = simple_strtoul(argv[2], NULL, 16);
 		set_led(param);
 	}
-#endif    /* comment by WangGang   */
 	else if(strncmp(argv[1], "key", 3) == 0) {
+		key_init();
 		param = key_read();
-		printf("Read Key=0x%x\n", param);
+		printf("Read Key=0x%x,dc=%d\n", param, get_dc_status());
 	}
 	else if(strncmp(argv[1], "poweroff", 8) == 0) {
 		do_poweroff(0x8FFFF);
