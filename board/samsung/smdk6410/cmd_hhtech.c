@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified:                                                    *
+* Last modified: Thu, 05 Mar 2009 13:44:52 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -108,8 +108,6 @@ static int file_check_sum(void *addr, int len)
 #define GPIO_DCIN   (('L'-'A')*16 + 13)
 static int get_dc_status(void)
 {
-    gpio_direction_input(GPIO_DCIN);
-
     return gpio_get_value(GPIO_DCIN);
 }
 
@@ -135,13 +133,13 @@ static int do_poweroff(u32 flag)
 {
 //	int usb = 0, key;
 	PFUNC("flag=0x%x\n", flag);
-	set_led(0); udelay(0x700000);
-	set_led(1); udelay(0x700000);
-	set_led(2); udelay(0x700000);
-	set_led(3); udelay(0x700000);
-	set_led(0); udelay(0x700000);
+	set_led(0); udelay(0x300000);
+	set_led(1); udelay(0x300000);
+	set_led(2); udelay(0x300000);
+	set_led(3); udelay(0x300000);
+	set_led(0);
 
-	while(1) gpio_direction_output(GPIO_POWEROFF, 1);
+	gpio_direction_output(GPIO_POWEROFF, 1);
 
 	return 0;
 }
@@ -407,7 +405,7 @@ ReRead:
 	    break;
 	case KEY_NONE:	// no key
 	    key = 0; 
-	    if(get_dc_status()) {
+	    if(0 == get_dc_status()) {
 		PFUNC("other key and no usb,poweroff\n");
 		do_poweroff(0x8FFF);
 	    }
@@ -503,7 +501,8 @@ void init_hard_last(int flag, int param)
 #endif    /* comment by WangGang   */
 	gpio_direction_input(GPIO_DCIN);
 	key_init();
-	
+	udelay(12000);
+
 	if(1 == flag && 1 == param)	{
 		do_upgrade(0, 0);
 		return;
@@ -724,8 +723,8 @@ static int boot_image(u32 addr, u32 addr2)
 	int argc = 2;
 	init_cmd_argv();
 
-	set_led(0);
-	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootdelay");
+	set_led(3);
+	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootdelay splash");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
 	if(addr2) {
@@ -869,6 +868,7 @@ int do_start (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		set_led(param);
 	}
 	else if(strncmp(argv[1], "key", 3) == 0) {
+		gpio_direction_input(GPIO_DCIN);
 		key_init();
 		param = key_read();
 		printf("Read Key=0x%x,dc=%d\n", param, get_dc_status());

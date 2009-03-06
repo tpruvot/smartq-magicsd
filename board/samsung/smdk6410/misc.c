@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified:                                                    *
+* Last modified: Fri, 06 Mar 2009 16:27:00 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -43,7 +43,7 @@ static char  gdat[]= {4, 4, 4, 4, 4, 4, 4, 8, 4, 4, 8, 8, 4, 4, 4, 4, 4};
 static char  gcsz[]= {4, 4, 4, 4, 4, 2, 4, 4, 2, 2, 4, 4, 4, 2, 2, 2, 2};
 static unsigned short gbase[] = 
     {0x000, 0x020, 0x040, 0x060, 0x080, 0x0A0, 0x0C0, 0x0E0, 0x100, 0x120,  // A...J
-     0x880, 0x810, 0x820, 0x830, // K ... N
+     0x800, 0x810, 0x820, 0x830, // K ... N
      0x140, 0x160, 0x180, };     // O P Q
 static unsigned long  gpio_base = ELFIN_GPIO_BASE;
 
@@ -51,7 +51,7 @@ static int gpio_direction_set(int gpio, int out)
 {
     int group = gpio >> 4, sub = gpio % 16;
     unsigned char mask = 0x03;
-    unsigned int regconf = 0, val;
+    unsigned int regconf = 0, val, regpud = 0;
 
     regconf = gpio_base + gbase[group];
     if(gcsz[group] == 4) {
@@ -59,13 +59,27 @@ static int gpio_direction_set(int gpio, int out)
 	if(sub >= 8) regconf += 4;
     }
 
-//    printf("SET: gpio=%d,regconf=0x%x\n", gpio, regconf);
+    //printf("SET: gpio=%d,regconf=0x%x\n", gpio, regconf);
     val = readl(regconf);
-    val &= ~((mask) << (gcsz[group] * sub));
+    if(4 == gcsz[group] && sub >= 8)
+	val &= ~((mask) << (gcsz[group] * (sub-8)));
+    else
+	val &= ~((mask) << (gcsz[group] * sub));
 
-    if(out) val |= ((0x01) << (gcsz[group] * sub));
-
+    if(out) {
+	if(4 == gcsz[group] && sub >= 8)
+	    val |= ((0x01) << (gcsz[group] * (sub-8)));
+	else
+	    val |= ((0x01) << (gcsz[group] * sub));
+    }
     writel(val, regconf);
+
+    regpud = gpio_base + gbase[group] + gdat[sub] + 4;
+    if(4 == gcsz[group]) regpud += 4;
+    val = readl(regpud);
+    val &= ~(0x3<<(sub*2));
+    writel(val, regpud);
+
 
     return 0;
 }
