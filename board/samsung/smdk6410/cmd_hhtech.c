@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Thu, 05 Mar 2009 13:44:52 +0800       by root #
+* Last modified: Fri, 06 Mar 2009 16:43:48 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -106,6 +106,9 @@ static int file_check_sum(void *addr, int len)
 }
 
 #define GPIO_DCIN   (('L'-'A')*16 + 13)
+#define GPIO_GPN13   (('N'-'A')*16 + 13)
+#define GPIO_GPN14   (('N'-'A')*16 + 14)
+
 static int get_dc_status(void)
 {
     return gpio_get_value(GPIO_DCIN);
@@ -500,6 +503,8 @@ void init_hard_last(int flag, int param)
 	init_card_gpio();
 #endif    /* comment by WangGang   */
 	gpio_direction_input(GPIO_DCIN);
+	gpio_direction_input(GPIO_GPN13);
+	gpio_direction_input(GPIO_GPN14);
 	key_init();
 	udelay(12000);
 
