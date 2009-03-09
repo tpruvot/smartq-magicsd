@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Fri, 06 Mar 2009 16:43:48 +0800       by root #
+* Last modified: Sat, 07 Mar 2009 14:41:58 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -729,7 +729,7 @@ static int boot_image(u32 addr, u32 addr2)
 	init_cmd_argv();
 
 	set_led(3);
-	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootdelay splash");
+	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
 	if(addr2) {
