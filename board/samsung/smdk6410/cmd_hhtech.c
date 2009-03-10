@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Sat, 07 Mar 2009 14:41:58 +0800       by root #
+* Last modified: Tue, 10 Mar 2009 18:30:23 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -327,11 +327,11 @@ static int do_upgrade(int flag, int param)
     
     set_led(2);
     if((do_read_inand(INAND_DEV, INAND_KERNEL1_BEND, 1)) 
-	|| boot_image(MEM_KERNEL_START, 0)) {
+	|| boot_image(MEM_KERNEL_START, MEM_INITRAMFS)) {
 	printf("Error iNAND START 1\n");
 
 	if((do_read_inand(INAND_DEV, INAND_KERNEL0_BEND, 1)) 
-	    || boot_image(MEM_KERNEL_START, 0)) {
+	    || boot_image(MEM_KERNEL_START, MEM_INITRAMFS)) {
 	    printf("Error iNAND START 2\n");
 	}
     }
