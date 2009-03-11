@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Wed, 11 Mar 2009 14:18:02 +0800       by root #
+* Last modified: Wed, 11 Mar 2009 16:26:58 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -59,6 +59,9 @@
 
 #define ENCRYPT_OFFSET      	0x10000		/* firm is encrypted */
 #define ENCRYPT_LEN         	0x1000		/* firm encrypt size */
+
+#define DEBUG
+#undef	DEBUG
 
 #if defined(CONFIG_NAND)
 #include <nand.h>
@@ -136,10 +139,12 @@ static int do_poweroff(u32 flag)
 {
 //	int usb = 0, key;
 	PFUNC("flag=0x%x\n", flag);
+#ifdef DEBUG
 	set_led(0); udelay(0x300000);
 	set_led(1); udelay(0x300000);
 	set_led(2); udelay(0x300000);
 	set_led(3); udelay(0x300000);
+#endif
 	set_led(0);
 
 	gpio_direction_output(GPIO_POWEROFF, 1);
@@ -235,7 +240,11 @@ static int do_readsd_upgrade(int dev, char *file)
     unsigned char *ptr, *ptrsrc;
     FirmHead  *fh = (FirmHead*)MEM_READ_FILE;
 
+#ifdef DEBUG
     set_led(3);
+#else
+    set_led(1);
+#endif
     memset(fh, 0, sizeof(FirmHead));
     size = load_sd_file(dev, file, (u32)fh, INAND_BLOCK_SIZE);
 
@@ -278,7 +287,9 @@ int do_start_firmware(int flag, char *file)
     }
 
 #ifdef INAND_RW_DIRECT
+#ifdef DEBUG
     set_led(2);
+#endif
     if((do_read_inand(INAND_DEV, INAND_KERNEL1_BEND, 0)) 
 	|| boot_image(MEM_KERNEL_START, 0)) {
 	printf("Error for iNAND START 1\n");
@@ -324,8 +335,10 @@ static int do_upgrade(int flag, int param)
 {
 #ifdef INAND_RW_DIRECT
     if(0 == flag) goto up_from_sd;
-    
+
+#ifdef DEBUG
     set_led(2);
+#endif
     if((do_read_inand(INAND_DEV, INAND_KERNEL1_BEND, 1)) 
 	|| boot_image(MEM_KERNEL_START, MEM_INITRAMFS)) {
 	printf("Error iNAND START 1\n");
@@ -484,7 +497,9 @@ void init_hard_last(int flag, int param)
 	u32 key;
 	char *s;
 
+#ifdef DEBUG
 	set_led(1);
+#endif
 	/* get_dma addr, DmaMemory = memAddr - 0x200000 
 	 * DmaLinkAddr = No Need */
 #if 0     /* comment by whg HHTECH */
@@ -729,7 +744,11 @@ static int boot_image(u32 addr, u32 addr2)
 	int argc = 2;
 	init_cmd_argv();
 
+#ifdef DEBUG
 	set_led(3);
+#else
+	set_led(1);
+#endif
 	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
