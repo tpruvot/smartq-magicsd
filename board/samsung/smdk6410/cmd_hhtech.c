@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Tue, 10 Mar 2009 18:30:23 +0800       by root #
+* Last modified: Wed, 11 Mar 2009 09:17:16 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -190,7 +190,7 @@ typedef struct _firmware_fileheader {
 	    uint32_t offset, size;
 	} file, nand;
 	uint32_t check_sum;
-    }qi, u_boot, zimage, initramfs, rootfs; // components[];
+    }qi, u_boot, zimage, initramfs, rootfs, homefs; // components[];
 }FirmHead;
 extern block_dev_desc_t * mmc_get_dev(int dev);
 extern void mmc_release_dev(int dev);
