@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Wed, 11 Mar 2009 09:17:16 +0800       by root #
+* Last modified: Wed, 11 Mar 2009 14:18:02 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -394,6 +394,7 @@ ReRead:
 
     switch(key)	{
 	case KEY_UPGRADE: // upgrade from SD
+	case KEY_UPGRADE3:
 	    do_upgrade(0, 0);
 	    do_poweroff(0x8FFF);
 	    key = 0;
