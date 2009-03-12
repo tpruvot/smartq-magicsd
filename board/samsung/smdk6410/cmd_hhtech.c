@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Wed, 11 Mar 2009 16:26:58 +0800       by root #
+* Last modified: Thu, 12 Mar 2009 13:48:17 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -132,6 +132,19 @@ static int set_led(int flag)
 
     return 0;
 }
+
+// LCD backlight on or off
+#define GPIO_LCD_BACKLIGHT  (('F'-'A')*16 + 15)
+static int set_lcd_backlight(int flag)
+{
+    if(flag)
+	gpio_direction_output(GPIO_LCD_BACKLIGHT, 1);
+    else
+	gpio_direction_output(GPIO_LCD_BACKLIGHT, 0);
+
+    return 0;
+}
+
 
 // high poweroff, low start
 #define GPIO_POWEROFF (('K'-'A')*16 + 15)
@@ -749,6 +762,7 @@ static int boot_image(u32 addr, u32 addr2)
 #else
 	set_led(1);
 #endif
+	set_lcd_backlight(0);	// turn off the LCD backlight
 	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
