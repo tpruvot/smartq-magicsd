@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Thu, 12 Mar 2009 13:48:17 +0800       by root #
+* Last modified: Wed, 18 Mar 2009 18:22:08 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -255,8 +255,6 @@ static int do_readsd_upgrade(int dev, char *file)
 
 #ifdef DEBUG
     set_led(3);
-#else
-    set_led(1);
 #endif
     memset(fh, 0, sizeof(FirmHead));
     size = load_sd_file(dev, file, (u32)fh, INAND_BLOCK_SIZE);
@@ -421,16 +419,19 @@ ReRead:
     switch(key)	{
 	case KEY_UPGRADE: // upgrade from SD
 	case KEY_UPGRADE3:
+	    set_led(3);
 	    do_upgrade(0, 0);
 	    do_poweroff(0x8FFF);
 	    key = 0;
 	    break;
-	case KEY_UPGRADE2:
+	case KEY_UPGRADE2:  // upgrade from INAND
+	    set_led(3);
 	    do_upgrade(1, 0);
 	    do_poweroff(0x8FFF);
 	    key = 0;
 	    break;
 	case KEY_POWER_ON:
+	    set_led(1);
 	    key = 1;
 	    break;
 	case KEY_NONE:	// no key
@@ -439,6 +440,7 @@ ReRead:
 		PFUNC("other key and no usb,poweroff\n");
 		do_poweroff(0x8FFF);
 	    }
+	    set_led(1);
 	    break;
 
 	default:	// muilt key perssed
@@ -759,8 +761,6 @@ static int boot_image(u32 addr, u32 addr2)
 
 #ifdef DEBUG
 	set_led(3);
-#else
-	set_led(1);
 #endif
 	set_lcd_backlight(0);	// turn off the LCD backlight
 	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
