@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Wed, 11 Mar 2009 14:18:08 +0800       by root #
+* Last modified: Fri, 27 Mar 2009 17:07:26 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -37,7 +37,7 @@
 #define KEY_UPGRADE2           (KEY_LEFT)    // upgrade from inand
 #define KEY_UPGRADE3           (KEY_UP | KEY_POWER)    // upgrade from SD also
 #define KEY_POWER_ON           (KEY_POWER)
-
+#define KEY_FACTORY            (KEY_DOWN | KEY_POWER)
 
 typedef struct tag_key_info {
     unsigned short key;

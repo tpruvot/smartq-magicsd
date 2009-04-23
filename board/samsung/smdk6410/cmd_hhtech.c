@@ -13,13 +13,19 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Wed, 18 Mar 2009 18:22:08 +0800       by root #
+* Last modified: Thu, 23 Apr 2009 09:50:23 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
 #include <common.h>
 #include <command.h>
 #include "hhtech.h"
+
+//#define PASSWD
+#ifdef PASSWD
+#include "lib_Data.h"
+#include "lib_Crypto.h"
+#endif
 
 #ifdef CONFIG_HHTECH_MINIPMP
 
@@ -86,6 +92,23 @@ static int boot_image(u32 addr, u32 addr2);
 static int load_sd_file(int dev, char *file, u32 addr, int size);
 static int load_nand_image(u32 mem_addr);
 static int load_boot_kernel(int flag, int param);
+
+static int key_factory = 0;
+
+#ifdef PASSWD
+static void mdelay(int ms_count)
+{
+	udelay(ms_count * 1000);
+}
+
+static void set_value_8(unsigned int value1, unsigned int value2, uchar val[])
+{
+	val[0] = (uchar)(value1 >> 24); val[1] = (uchar)(value1 >> 16);
+	val[2] = (uchar)(value1 >> 8); val[3] = (uchar)(value1);
+	val[4] = (uchar)(value2 >> 24); val[5] = (uchar)(value2 >> 16);
+	val[6] = (uchar)(value2 >> 8); val[7] = (uchar)(value2);
+}
+#endif
 
 static int file_check_sum(void *addr, int len)
 {
@@ -414,7 +437,73 @@ static int press_key(void)
     u32 start_tick = get_ticks(), cur_tick = 0;
 
 ReRead:
+    key_factory = 0;
     key = key_read();
+
+#ifdef PASSWD
+    unsigned char a[8],b[8];
+    unsigned long int i_NC, i_C2, i_G2;
+    unsigned char buf[20];
+    unsigned char obuf[2];
+    int i, ret;
+
+    buf[0]=0x55;
+    buf[1]=0xaa;
+
+    ll_PowerOn();
+    mdelay(20);
+
+    if(SUCCESS != cm_Init()) printf("err init cm\n");
+    ret = cm_WriteConfigZone(0xb,0xa,buf,2,0x0);
+    if(ret!=SUCCESS) {printf("err write to mtz,return 0x%x\n",ret);
+	return -1;
+    }
+    mdelay(20);
+    ret = cm_ReadConfigZone(0xb,0xa,obuf,2);
+    if(ret!=SUCCESS) {printf("err read from mtz,return 0x%x\n",ret);
+	printf("read mtz 0x%x 0x%x\n",obuf[0],obuf[1]);
+	return -1;
+    }
+    if((obuf[0]!=0x55)||(obuf[1]!=0xaa)) return -1;
+    mdelay(20);
+    printf("mtz test success\n");
+
+    /* read NC */
+    ret = cm_ReadConfigZone(0xb,0x19,buf,7);
+    if(ret!=SUCCESS) {
+	printf("err read from NC,return 0x%x\n",ret);
+	return -1;
+    } else {
+	printf("NC is: ");
+	for(i = 0; i < 7; i++)
+	    printf("%02x", buf[i]);
+	printf("\n");
+    }
+    i_NC = (unsigned int)(buf[0] << 24) | (unsigned int)(buf[1] << 16) | (unsigned int)(buf[2] << 8) | (unsigned int)buf[3]; 
+    printf("i_NC = %x\n", i_NC);
+
+    i_G2 = 2 * i_NC + 100;
+    printf("i_G2 = %0x\n", i_G2);
+    set_value_8(i_G2, i_G2, G2);
+    printf("G2 is: ");
+    for(i = 0; i < 8; i++)
+	printf("%02x", G2[i]);
+    printf("\n");
+
+    mdelay(20);
+    for(i=0;i<8;i++){
+	a[i] = G2[i];
+	b[i] = G2[i];
+    }
+    ret = cm_VerifyCrypto(0xb, 2, a, NULL, 0x0);
+    if (ret != 0x00) {printf("fail 0x%x\n",ret);
+	return -1;
+    }
+    ret = cm_VerifyCrypto(0xb, 2, b, NULL, 0x1);
+    if (ret != 0x00) {printf("fail 2 0x%x\n",ret);
+	return -1;
+    }
+#endif
 
     switch(key)	{
 	case KEY_UPGRADE: // upgrade from SD
@@ -430,6 +519,10 @@ ReRead:
 	    do_poweroff(0x8FFF);
 	    key = 0;
 	    break;
+	case KEY_FACTORY:
+	    key_factory = 1;
+	    set_led(1);
+	    break;
 	case KEY_POWER_ON:
 	    set_led(1);
 	    key = 1;
@@ -442,7 +535,6 @@ ReRead:
 	    }
 	    set_led(1);
 	    break;
-
 	default:	// muilt key perssed
 	    if(key & KEY_LOCK) {
 		rtc_delay(3);
@@ -506,7 +598,7 @@ static void set_boot_env(int pow_key, int flag)
     setenv("bootargs", arg);
 }
 
-void init_hard_last(int flag, int param)
+int init_hard_last(int flag, int param)
 {
 //	u32 addr = 0, ddrque;
 	u32 key;
@@ -541,17 +633,20 @@ void init_hard_last(int flag, int param)
 
 	if(1 == flag && 1 == param)	{
 		do_upgrade(0, 0);
-		return;
+		return 0;
 	}
 	else if(2 == flag) {
 	    do_boot_upgrade(0, param);
-	    return ;
+	    return 0;
 	}
 
-	if((s = getenv("stop")) && s[0] == 'y') return;
+	if((s = getenv("stop")) && s[0] == 'y') return 0;
 	key = press_key();
+	if(key == -1)
+	    return -1;
 //	set_boot_env(key, 0);
 	PFUNC("BOOTARGS=%s\n", getenv("bootargs"));
+	return 0;
 }
 
 
@@ -763,7 +858,10 @@ static int boot_image(u32 addr, u32 addr2)
 	set_led(3);
 #endif
 	set_lcd_backlight(0);	// turn off the LCD backlight
-	setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
+	if(key_factory)
+	    setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash factory");
+	else
+	    setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash");
 	sprintf(cmd_argv[0], "bootm");
 	sprintf(cmd_argv[1], "0x%x", addr);
 	if(addr2) {

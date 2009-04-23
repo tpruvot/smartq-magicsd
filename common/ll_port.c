@@ -8,7 +8,7 @@
 //#include <lib_CM.h>
 #include <lib_Crypto.h>
 #include <ll_port.h>
-#define ll_debug
+//#define ll_debug
 
 
 #define LL_START_TRIES 10

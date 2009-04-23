@@ -57,12 +57,6 @@
 #include "../drivers/lan91c96.h"
 #endif
 
-//#define PASSWD
-#ifdef PASSWD
-#include "lib_Data.h"
-#include "lib_Crypto.h"
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #if (CONFIG_COMMANDS & CFG_CMD_NAND)
@@ -107,74 +101,6 @@ extern void rtl8019_get_enetaddr (uchar * addr);
 static ulong mem_malloc_start = 0;
 static ulong mem_malloc_end = 0;
 static ulong mem_malloc_brk = 0;
-
-static void mdelay(int ms_count)
-{
-	udelay(ms_count * 1000);
-}
-
-#ifdef PASSWD
-unsigned char cm_randomread()
-{
-	unsigned char ret;
-	long long ll;
-	unsigned char my_choose,i;
-	unsigned char read_user[9];
-//	ll = REG_TCU_TCNT(0)*32145+2345;
-	my_choose =rand();//(uchar)(ll%100);
-	//printf("my_choose is %d\n",my_choose);
-	
-	if(my_choose<40){//use user 0
-		if(ret = cm_SetUserZone(0xb,0x0,0x0)) return ret;
-		mdelay(20);
-		if(ret = cm_VerifyPassword(0xb,passwd1,0x01,0x01)) return ret;
-		mdelay(20);
-		if(ret = cm_ReadUserZone(0x0b,0x00,read_user,9)) return ret;
-		mdelay(20);
-		for(i=0;i<9;i++){
-	//		printf("read 0x%x zone 0x%x\n",read_user[i],zone0[i]);
-			if(read_user[i] != zone0[i]) return -1;
-		}
-	}else if((my_choose>=40)&&(my_choose<70)){ //use user 1
-		if(ret = cm_SetUserZone(0xb,0x1,0x0)) return ret;
-		mdelay(20);
-		if(ret = cm_VerifyPassword(0xb,passwd2,0x02,0x01)) return ret;
-		mdelay(20);
-		if(ret = cm_ReadUserZone(0x0b,0x00,read_user,9)) return ret;
-		mdelay(20);
-		for(i=0;i<9;i++){
-	//		printf("read 0x%x zone 0x%x\n",read_user[i],zone1[i]);
-			if(read_user[i] != zone1[i]) return -1;
-		}
-
-	}else if((my_choose>=70)&&(my_choose<90)){ //user 2
-		if(ret = cm_SetUserZone(0xb,0x2,0x0)) return ret;
-		mdelay(20);
-		if(ret = cm_VerifyPassword(0xb,passwd0,0x00,0x01)) return ret;
-		mdelay(20);
-		if(ret = cm_ReadUserZone(0x0b,0x00,read_user,9)) return ret;
-		mdelay(20);
-		for(i=0;i<9;i++){
-		//	printf("read 0x%x zone 0x%x\n",read_user[i],zone2[i]);
-			if(read_user[i] != zone2[i]) return -1;
-		}
-
-	}else if(my_choose>=90){
-		if(ret = cm_SetUserZone(0xb,0x3,0x0)) return ret;
-		mdelay(20);
-		if(ret = cm_VerifyPassword(0xb,passwd7,0x07,0x01)) return ret;
-		mdelay(20);
-		if(ret = cm_ReadUserZone(0x0b,0x00,read_user,9)) return ret;
-		mdelay(20);
-		for(i=0;i<9;i++){
-		//	printf("read 0x%x zone 0x%x\n",read_user[i],zone3[i]);
-			if(read_user[i] != zone3[i]) return -1;
-		}
-	}
-	return ret;
-
-}
-#endif
 
 static
 void mem_malloc_init (ulong dest_addr)
@@ -340,34 +266,6 @@ void start_armboot (void)
 	unsigned long addr;
 #endif
 
-	printf("start_armboot\n");
-#ifdef PASSWD
-	unsigned char a[8],b[8];
-	int i, ret;
-	ll_PowerOn();
-	mdelay(20);
-	if(0x00 != cm_Init()) printf("err init cm\n");
-	
-	mdelay(20);
-	for(i=0;i<8;i++){
-		a[i] = G3[i];
-		b[i] = G3[i];
-	}
-	ret = cm_VerifyCrypto(0xb, 3, a, NULL, 0x0);
-	if (ret != 0x00) {printf("fail 0x%x\n",ret);
-	return ;
-	}
-	ret = cm_VerifyCrypto(0xb, 3, b, NULL, 0x1);
-	if (ret != 0x00) {printf("fail 2 0x%x\n",ret);
-	return ;
-	}
-
-	ret = cm_randomread();
-	if(ret) {
-		printf("err pass 0: 0x%x\n",ret);return ;
-	}
-#endif
-
 #if defined(CONFIG_BOOT_MOVINAND)
 	uint *magic = (uint *) (PHYS_SDRAM_1);
 #endif
@@ -399,12 +297,6 @@ void start_armboot (void)
 			hang ();
 		}
 	}
-#ifdef PASSWD
-	/*ret = cm_randomread();
-	if(ret) {
-		puts("err pass 1\n");return ;
-	}*/
-#endif
 
 #ifndef CFG_NO_FLASH
 	/* configure available FLASH banks */
@@ -437,13 +329,6 @@ void start_armboot (void)
 	size = lcd_setmem (addr);
 	gd->fb_base = addr;
 #endif /* CONFIG_LCD */
-
-#ifdef PASSWD
-	/*ret = cm_randomread();
-	if(ret) {
-		puts("err pass 2\n");return ;
-	}*/
-#endif
 
 	/* armboot_start is defined in the board-specific linker script */
 #ifdef CONFIG_MEMORY_UPPER_CODE /* by scsuh */
@@ -532,13 +417,6 @@ void start_armboot (void)
 #endif
 	}
 
-#ifdef PASSWD
-	/*ret = cm_randomread();
-	if(ret) {
-		puts("err pass 3\n");return ;
-	}*/
-#endif
-
 	devices_init ();	/* get the devices list going. */
 
 #ifdef CONFIG_CMC_PU2
@@ -546,13 +424,6 @@ void start_armboot (void)
 #endif /* CONFIG_CMC_PU2 */
 
 	jumptable_init ();
-
-#ifdef PASSWD
-	/*ret = cm_randomread();
-	if(ret) {
-		puts("err pass 4\n");return ;
-	}*/
-#endif
 
 	console_init_r ();	/* fully init console as a device */
 
@@ -599,8 +470,10 @@ void start_armboot (void)
 	if (tstc() && getc() == ' ')    // here test press key
 	    setenv("bootcmd", NULL); 
 	else {
-		init_hard_last(0, 0);
-		do_start_firmware(1, NULL);
+		if(0 == init_hard_last(0, 0))
+		    do_start_firmware(1, NULL);
+		else
+		    return;
 	}
 #endif
   
