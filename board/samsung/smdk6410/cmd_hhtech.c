@@ -13,12 +13,13 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Thu, 23 Apr 2009 09:50:23 +0800       by root #
+* Last modified: Thu, 23 Apr 2009 15:29:40 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
 #include <common.h>
 #include <command.h>
+#include <s3c6410.h>
 #include "hhtech.h"
 
 //#define PASSWD
@@ -598,6 +599,51 @@ static void set_boot_env(int pow_key, int flag)
     setenv("bootargs", arg);
 }
 
+static int battery_probe(void)
+{
+    S3C2410_ADC * const adc = S3C2410_GetBase_ADC();
+    S3C64XX_GPIO * const gpio = S3C64XX_GetBase_GPIO();
+    unsigned int i, val, data0, powerflag;
+
+    if(get_dc_status()) {
+	printf("dc on, don't need check battery!\n");
+	return 0;
+    }
+
+    adc->ADCDLY = 50000 & 0xffff;
+    val = S3C6410_ADCCON_RESSEL_12BIT | S3C2410_ADCCON_PRSCEN | S3C2410_ADCCON_PRSCVL(49);
+    adc->ADCCON = val | S3C2410_ADCCON_SELMUX(0);   // using AN0
+    udelay(10);
+
+    for(i=0; i<5; i++){
+	adc->ADCCON |= S3C2410_ADCCON_ENABLE_START; // start ADC conversion
+	do {
+	    val = adc->ADCCON;
+	} while(!(val & S3C2410_ADCCON_ECFLG));	// wait for the end of ADC conversion
+
+	// read data
+	// ref voltage:2.4V, battery max:4.2V, battery low:3.45V
+	data0 = adc->ADCDAT0 & S3C_ADCDAT0_XPDATA_MASK_12BIT;
+	if(data0 < 2192)	// (1525 * 345) / 240 = 2192
+	    powerflag = 1;
+	else
+	    powerflag = 0;
+    }
+    if(powerflag){
+	printf("The battery too low.\n\n");
+	set_led(2); udelay(0x300000);
+	set_led(0); udelay(0x300000);
+	set_led(2); udelay(0x300000);
+	set_led(0); udelay(0x300000);
+	set_led(2); udelay(0x300000);
+	set_led(0); udelay(0x300000);
+	set_led(2); udelay(0x300000);
+	set_led(0);
+	do_poweroff(0x8FFF);
+    }
+    return 0;
+}
+
 int init_hard_last(int flag, int param)
 {
 //	u32 addr = 0, ddrque;
@@ -641,6 +687,8 @@ int init_hard_last(int flag, int param)
 	}
 
 	if((s = getenv("stop")) && s[0] == 'y') return 0;
+
+	battery_probe();
 	key = press_key();
 	if(key == -1)
 	    return -1;

@@ -86,6 +86,43 @@ typedef enum {
 #define DRAM_BASE0		0x40000000      /* base address of dram bank 0 */
 #define DRAM_BASE1		0x50000000      /* base address of dram bank 1 */
 
+/* ADCCON Register Bits */
+#define S3C6410_ADCCON_RESSEL_10BIT     (0x0<<16)
+#define S3C6410_ADCCON_RESSEL_12BIT     (0x1<<16)
+#define S3C2410_ADCCON_ECFLG            (1<<15)
+#define S3C2410_ADCCON_PRSCEN           (1<<14)
+#define S3C2410_ADCCON_PRSCVL(x)        (((x)&0xFF)<<6)
+#define S3C2410_ADCCON_PRSCVLMASK       (0xFF<<6)
+#define S3C2410_ADCCON_SELMUX(x)        (((x)&0x7)<<3)
+#define S3C2410_ADCCON_MUXMASK          (0x7<<3)
+#define S3C2410_ADCCON_STDBM            (1<<2)
+#define S3C2410_ADCCON_READ_START       (1<<1)
+#define S3C2410_ADCCON_ENABLE_START     (1<<0)
+#define S3C2410_ADCCON_STARTMASK        (0x3<<0)
+
+/* ADCTSC Register Bits */
+#define S3C2410_ADCTSC_UD_SEN           (1<<8)
+#define S3C2410_ADCTSC_YM_SEN           (1<<7)
+#define S3C2410_ADCTSC_YP_SEN           (1<<6)
+#define S3C2410_ADCTSC_XM_SEN           (1<<5)
+#define S3C2410_ADCTSC_XP_SEN           (1<<4)
+#define S3C2410_ADCTSC_PULL_UP_DISABLE  (1<<3)
+#define S3C2410_ADCTSC_AUTO_PST         (1<<2)
+#define S3C2410_ADCTSC_XY_PST(x)        (((x)&0x3)<<0)
+
+/* ADCDAT0 Bits */
+#define S3C2410_ADCDAT0_UPDOWN          (1<<15)
+#define S3C2410_ADCDAT0_AUTO_PST        (1<<14)
+#define S3C2410_ADCDAT0_XY_PST          (0x3<<12)
+#define S3C2410_ADCDAT0_XPDATA_MASK     (0x03FF)
+#define S3C_ADCDAT0_XPDATA_MASK_12BIT   (0x0FFF)
+
+/* ADCDAT1 Bits */
+#define S3C2410_ADCDAT1_UPDOWN          (1<<15)
+#define S3C2410_ADCDAT1_AUTO_PST        (1<<14)
+#define S3C2410_ADCDAT1_XY_PST          (0x3<<12)
+#define S3C2410_ADCDAT1_YPDATA_MASK     (0x03FF)
+#define S3C_ADCDAT1_YPDATA_MASK_12BIT   (0x0FFF)
 
 /* S3C6400 device base addresses */
 #define ELFIN_DMA_BASE		0x75000000
