@@ -13,7 +13,7 @@
 *   you are free to modify and/or redistribute it                   *
 *   under the terms of the GNU General Public Licence (GPL).        *
 *                                                                   *
-* Last modified: Thu, 23 Apr 2009 15:29:40 +0800       by root #
+* Last modified: Wed, 06 May 2009 13:52:44 +0800       by root #
 *                                                                   *
 * No warranty, no liability, use this at your own risk!             *
 ********************************************************************/
@@ -29,6 +29,9 @@
 #endif
 
 #ifdef CONFIG_HHTECH_MINIPMP
+
+#define LCD_4
+//#undef	LCD_4
 
 #if 1
   #define  PFUNC(fmt, args...) \
@@ -47,7 +50,11 @@
   #define INAND_KERNEL0_BEND  (( 8<<20)/INAND_BLOCK_SIZE) // 8M*2 block from end
   #define INAND_KERNEL1_BEND  ((16<<20)/INAND_BLOCK_SIZE)
 
+#ifdef	LCD_4
 #define FIRMWARE                "/SmartQ5"
+#else
+#define FIRMWARE                "/SmartQ7"
+#endif
 #define UBOOTNAME               "/u-boot.bin"
 #ifdef CONFIG_ENABLE_MMU
   #define MEM_KERNEL_START        0xC0008000	/* read card file to here */
@@ -138,12 +145,21 @@ static int file_check_sum(void *addr, int len)
 
 static int get_dc_status(void)
 {
+#if defined(LCD_4)
     return gpio_get_value(GPIO_DCIN);
+#else
+    return !gpio_get_value(GPIO_DCIN);
+#endif
 }
 
 // LED is on GPN8 and GPN9
+#if defined(LCD_4)
 #define GPIO_LED_0  (('N'-'A')*16 + 8)
 #define GPIO_LED_1  (('N'-'A')*16 + 9)
+#else
+#define GPIO_LED_0  (('N'-'A')*16 + 9)
+#define GPIO_LED_1  (('N'-'A')*16 + 8)
+#endif
 static int set_led(int flag)
 {
     flag = flag % 4;
