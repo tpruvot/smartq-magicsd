@@ -1,0 +1,11 @@
+
+These files are the initramfs that the SmartQ devices uses as an alternate
+boot to run the installer.  It could be used for other purposes such as an
+altboot capability, etc.
+
+--dfc  
+David F. Carlson    Chronolytics, Inc.  Rochester, NY
+mailto:dave@chronolytics.com            http://www.chronolytics.com
+
+"The faster I go, the behinder I get." --Lewis Carroll
+
