@@ -36,7 +36,7 @@
 #include <linux/fs.h>
 #include <sys/wait.h>
 #include <linux/input.h>
-#include "uncompress.h"
+#include "firmware_header.h"
 
 static int KEY_ADD = 109;
 static int KEY_DEC = 104;
@@ -107,14 +107,26 @@ font_type font_0612 = {S0612, 8, 16};
 #define EXT3_ZIMAGE_INITRAMFS_SECTORS    (16 * 1024 * 2)        // 16MB
 #define RESERVED_SECTORS        (4 * 1024 * 2)        // 4MB
 #define INAND_BLOCK_SIZE        512            // 512B
-#define FDS_PATH            "/etc/_fds"
-#define FDS2_PATH            "/etc/_fds2"
 
 static screen_buffer *sb = NULL;
 static int fbmemlen;
 static int loading_homefs = 0;
 int keep_userzone = 0;
 static float ratio, old_ratio;
+
+void draw_string_en(char *str)
+{
+    draw_string (sb, CHARACTER_ZK, 
+           LOADING_TEXT_X_OFFSET, LOADING_TEXT_EN_OFFSET, 
+           &font_0612, str, &COLOR_WHITE, 1, sb->width);
+}
+
+void draw_string_zh(char *str)
+{
+    draw_string (sb, CHARACTER_ZK, 
+          LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, 
+          &font_0612, str, &COLOR_WHITE, 1, sb->width);   
+}
 
 int open_screen(void)
 {
@@ -241,7 +253,7 @@ static unsigned char *buffer = NULL;
 static uint32_t inand_check_sum;
 uint32_t total_size_sum, size_sum, old_size_sum;
 
-int loading(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_color, RGBLCD *trim_color)
+int loading(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_color, RGBLCD *trim_color)
 {
     uint32_t read_size, size, remnant_size;
     char s[100];
@@ -256,17 +268,17 @@ int loading(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_color
         char err[120];
         sprintf(err, "inand write fails %s", strerror(errno)); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-            LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
+#warning missing chinese
         sleep(5);
         return -1; 
     }
     ratio = size_sum / (float)total_size_sum;
     if((ratio - old_ratio) * 100 > 1) {
-        sprintf(s, "%s %d%%\n", name_zk, (int)(ratio * 100));
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);   
+        sprintf(s, "%s %d%%\n", name_zh, (int)(ratio * 100));
+        draw_string_zh(s);
         sprintf(s, "%s %d%%\n", name_en, (int)(ratio * 100));
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(s);
         draw_progress_bar(ratio, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET,
             PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT,
             PROGRESS_BAR_TRIM,
@@ -280,10 +292,10 @@ int loading(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_color
     size_sum += read_size;
     write(fd_inand, buffer, remnant_size);
     ratio = size_sum / (float)total_size_sum;
-    sprintf(s, "%s %d%%\n", name_zk, (int)(ratio * 100));
-    draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+    sprintf(s, "%s %d%%\n", name_zh, (int)(ratio * 100));
+    draw_string_zh(s);
     sprintf(s, "%s %d%%\n", name_en, (int)(ratio * 100));
-    draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+    draw_string_en(s);
     draw_progress_bar(ratio, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET,
         PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT,
         PROGRESS_BAR_TRIM,
@@ -294,7 +306,7 @@ int loading(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_color
 
 }
 
-int loading_fs(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_color, RGBLCD *trim_color)
+int loading_fs(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_color, RGBLCD *trim_color)
 {
     uint32_t read_size, size, remnant_size;
     int ret;
@@ -326,10 +338,10 @@ int loading_fs(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_co
             write(fd[1], buffer, ROOTFS_SIZE_PER_WRITE);
             ratio = size_sum / (float)total_size_sum;
             if((ratio - old_ratio) * 100 > 1) {
-                sprintf(s, "%s %d%%\n", name_zk, (int)(ratio * 100));
-                draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);    
+                sprintf(s, "%s %d%%\n", name_zh, (int)(ratio * 100));
+                draw_string_zh(s);
                 sprintf(s, "%s %d%%\n", name_en, (int)(ratio * 100));
-                draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+                draw_string_en(s);
                 draw_progress_bar(ratio, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET,
                     PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT,
                     PROGRESS_BAR_TRIM,
@@ -343,10 +355,10 @@ int loading_fs(char *name_zk, char *name_en, uint32_t total_size, RGBLCD *bar_co
         size_sum += read_size;
         write(fd[1], buffer, remnant_size);
         ratio = size_sum / (float)total_size_sum;
-        sprintf(s, "%s %d%%\n", name_zk, (int)(ratio * 100));
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+        sprintf(s, "%s %d%%\n", name_zh, (int)(ratio * 100));
+        draw_string_zh(s);
         sprintf(s, "%s %d%%\n", name_en, (int)(ratio * 100));
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, s, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(s);
         draw_progress_bar(ratio, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET,
             PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT,
             PROGRESS_BAR_TRIM,
@@ -447,8 +459,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         fprintf(stderr,"%s\n", err);
 
 #warning missing chinese
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-              LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
 
@@ -465,8 +476,8 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "u_boot1 xsum fail: expected %d calc'ed %d", 
                (fw_fh->u_boot).check_sum, inand_check_sum); 
         fprintf(stderr,"%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-                     LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+#warning missing chinese
+        draw_string_en(err);
         sleep(5);
         return -1;
 
@@ -483,8 +494,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "zimage1 xsum fail: expected %d calc'ed %d", 
                 (fw_fh->zimage).check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-              LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
 
@@ -500,8 +510,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "initramfs1 xsum fail: expected %d calc'ed %d", 
                 (fw_fh->initramfs).check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-            LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
     }
@@ -517,8 +526,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "file header2 xsum fail: expected %d calc'ed %d", 
                 fw_fh->check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-               LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
     }
@@ -534,8 +542,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "u_boot2 xsum fail: expected %d calc'ed %d", 
                       (fw_fh->u_boot).check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-           LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
 
@@ -552,8 +559,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "zimage2 xsum fail: expected %d calc'ed %d", 
                 (fw_fh->zimage).check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-            LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
     }
@@ -568,8 +574,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         sprintf(err, "initramfs2 xsum fail: expected %d calc'ed %d", 
                       (fw_fh->initramfs).check_sum, inand_check_sum); 
         fprintf(stderr, "%s\n", err);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-           LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
         return -1;
     }
@@ -614,20 +619,18 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
         fprintf(stderr, "(fw_fh->rootfs).file.offset = %d\n", (fw_fh->rootfs).file.offset);
         if(total_size_sum - size_sum != (fw_fh->rootfs).file.size) {
             fprintf(stderr, "wrong rootfs size\n");
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-                   LOADING_TEXT_EN_OFFSET, &font_0612, "Fails: wrong rootfs size", &COLOR_WHITE, 1, sb->width);
+            draw_string_en("Fails: wrong rootfs size");
             sleep(5);
 
             return -1;
         }
         if(0 != loading_fs("正在升级... ", "Upgrading... ", (fw_fh->rootfs).file.size, bar_color, trim_color))  {
-           draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-               LOADING_TEXT_EN_OFFSET, &font_0612, "Loading rootfs fails", &COLOR_WHITE, 1, sb->width);
+           draw_string_en("Loading rootfs fails");
            sleep(5);
            return -1;
        }
-       draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在升级... 100%", &COLOR_WHITE, 1, sb->width);    
-       draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Upgrading... 100%", &COLOR_WHITE, 1, sb->width);
+       draw_string_zh("正在升级... 100%");
+       draw_string_en("Upgrading... 100%");
        draw_progress_bar(1.0, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET,
            PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT,
            PROGRESS_BAR_TRIM,
@@ -670,9 +673,9 @@ int partition_inand(char *devName, long sectors)
     umount("/mnt/mmcblk0p1/"); // hardcoded: dumb
     sprintf(system_cmd, fdisk_cmd, devName, 
        (sectors - EXT3_HOME_SECTORS - EXT3_SWAP_SECTORS - 
-        EXT3_ZIMAGE_INITRAMFS_SECTORS) / 2048,
-        EXT3_HOME_SECTORS / 2048,
-        EXT3_SWAP_SECTORS / 2048);
+        EXT3_ZIMAGE_INITRAMFS_SECTORS) / NANDBLKSZ,
+        EXT3_HOME_SECTORS / NANDBLKSZ,
+        EXT3_SWAP_SECTORS / NANDBLKSZ);
     system(system_cmd);
     fprintf(stderr, "fdisk success\n");
 
@@ -742,10 +745,8 @@ int main( int argc, char *argv[] )
     fd_inand = open(argv[2], O_RDWR);
     if(fd_inand == -1) {
         fprintf(stderr, "main: can't find inand device %s\n", argv[2]);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "找不到升级设备!\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-         LOADING_TEXT_EN_OFFSET, &font_0612, "FATAL: inand open fails\n", &COLOR_WHITE, 1, sb->width);
-
+        draw_string_zh("找不到升级设备!\n");
+        draw_string_en("FATAL: inand open fails\n");
         return -1;
     }
 
@@ -757,8 +758,8 @@ int main( int argc, char *argv[] )
             goto fail2;
         }
 
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "按'+'号键保留系统设置，否则按'-'号键...\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Press '+' to keep system setting,or press '-'...\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("按'+'号键保留系统设置，否则按'-'号键...\n");
+        draw_string_en("Press '+' to keep system setting,or press '-'...\n");
 
         gettimeofday(&tpStart, NULL);
         gettimeofday(&tpEnd, NULL);
@@ -785,26 +786,25 @@ int main( int argc, char *argv[] )
         }
         close(keys_fd);
         if(event.code == KEY_ADD) {
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "您选择了保留系统设置\n", &COLOR_WHITE, 1, sb->width);
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Keeping system settings\n", &COLOR_WHITE, 1, sb->width);
-
+            draw_string_zh("您选择了保留系统设置\n");
+            draw_string_en("Keeping system settings\n");
             keep_userzone = 1;
         } else {
             keep_userzone = 0;
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "您选择了不保留系统设置\n", &COLOR_WHITE, 1, sb->width);
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Discarding system settings\n", &COLOR_WHITE, 1, sb->width);
+            draw_string_zh("您选择了不保留系统设置\n");
+            draw_string_en("Discarding system settings\n");
         }
     }
     fprintf(stderr, "keep_userzone = %d\n", keep_userzone);
 
-    draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在校验固件...\n", &COLOR_WHITE, 1, sb->width);
-    draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Verifying the firmware...\n", &COLOR_WHITE, 1, sb->width);
+    draw_string_zh("正在校验固件...\n");
+    draw_string_en("Verifying the firmware...\n");
     fw_fh = (firmware_fileheader *)malloc(sizeof(firmware_fileheader));
     ret = uncompress(argv[1], fw_fh);
     if(ret != 0) {
         fprintf(stderr, "main: uncompress firmware file %s failed\n", argv[1]);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "校验固件失败！\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Verifying the firmware failed!\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("校验固件失败！\n");
+        draw_string_en("Verifying the firmware failed!\n");
         goto fail2;
     }
 
@@ -829,38 +829,36 @@ int main( int argc, char *argv[] )
 
 
         // do the partitioning action
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在进行分区...\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("正在进行分区...\n");
 
         sprintf(strbuf, "Partitioning %s (%lu sectors)...", argv[2], sectors);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-              LOADING_TEXT_EN_OFFSET, &font_0612, strbuf, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(strbuf);
 
         if (partition_inand(argv[2], sectors) == -1) {
 #warning missing chinese
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "FATAL: partition fails!", &COLOR_WHITE, 1, sb->width);
+            draw_string_en("FATAL: partition fails!");
             fprintf(stderr, "main: partition of device %s fails\n", argv[2]);
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_EN_OFFSET, &font_0612, "FATAL: partition fails!", &COLOR_WHITE, 1, sb->width);
             return -1;
         }
 
         // prep the filesystems
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在格式化根分区...\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Formatting root partition...\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("正在格式化根分区...\n");
+        draw_string_en("Formatting root partition...\n");
 
-        sprintf(system_cmd, "mkfs.ext3 %sp%d -L rootfs 1>/dev/null", argv[2], 1);
+        sprintf(system_cmd, "mkfs.ext3 %sp%d -L root 1>/dev/null", argv[2], 1);
         system(system_cmd);
         fprintf(stderr, "%s\n", system_cmd);
 
         if(!keep_userzone) {
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在格式化用户分区...\n", &COLOR_WHITE, 1, sb->width);
-            draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Formatting home partition...\n", &COLOR_WHITE, 1, sb->width);
+            draw_string_zh("正在格式化用户分区...\n");
+            draw_string_en("Formatting home partition...\n");
             sprintf(system_cmd, "mkfs.ext3 %sp%d -L home 1>/dev/null", argv[2], 2);
             system(system_cmd);
             fprintf(stderr, "%s\n", system_cmd);
         }
 
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "正在格式化交换分区...\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Formatting swap partition...\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("正在格式化交换分区...\n");
+        draw_string_en("Formatting swap partition...\n");
 
         sprintf(system_cmd, "mkswap %sp%d 1>/dev/null", argv[2], 3);
         system(system_cmd);
@@ -883,8 +881,7 @@ int main( int argc, char *argv[] )
            (fw_fh->qi).check_sum, inand_check_sum); 
         fprintf(stderr,"%s\n", err);
 #warning missing chinese
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, 
-            LOADING_TEXT_EN_OFFSET, &font_0612, err, &COLOR_WHITE, 1, sb->width);
+        draw_string_en(err);
         sleep(5);
 
         return -1;
@@ -904,11 +901,11 @@ int main( int argc, char *argv[] )
 
     memset(sb->buffer + FB_BYTES_OF_LOGO, 0, fbmemlen - FB_BYTES_OF_LOGO);
     if(0 == ret) {
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "升级成功，10秒钟后将自动关机...\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Upgrade OK,shutdown after 10 seconds...\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("升级成功，10秒钟后将自动关机...\n");
+        draw_string_en("Upgrade OK,shutdown after 10 seconds...\n");
     } else {
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "升级失败！\n", &COLOR_WHITE, 1, sb->width);
-        draw_string (sb, CHARACTER_ZK, LOADING_TEXT_X_OFFSET, LOADING_TEXT_ZH_OFFSET, &font_0612, "Upgrade failed！\n", &COLOR_WHITE, 1, sb->width);
+        draw_string_zh("升级失败！\n");
+        draw_string_en("Upgrade failed!\n");
     }
     close(fd_sd);
     free(buffer);

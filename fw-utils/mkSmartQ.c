@@ -29,11 +29,12 @@
 #include "firmware_header.h"
 
 #define SIZE_PER_READ	(4 * 1024 * 1024)   // 4MB
-#define FIRMWARE_NAME	"SmartQ5"
+static const char Q5[] = "SmartQ5";
+static const char Q7[] = "SmartQ7";
+static char *fwName	= Q7;
 
-static int fd_array[FIRMWARE + 1];
-static int file_size[FIRMWARE + 1];
-static uint32_t check_sum[FIRMWARE + 1];
+static int file_size[MAX_SECTIONS];
+static uint32_t check_sum[MAX_SECTIONS];
 static unsigned char *buffer = NULL;
 
 static inline int get_sum(unsigned char *buffer, int buffer_size)
@@ -78,9 +79,12 @@ static void fill_fw_fh(firmware_fileheader *fw_fh)
     fw_fh->date	= time((time_t*)NULL);
     memset(fw_fh->vendor, 0, sizeof(fw_fh->vendor));
     strcpy(fw_fh->vendor, "hhtech");
-    fw_fh->component_count = 5;
+    memset(fw_fh->model, 0, sizeof(fw_fh->model));
+    strcpy(fw_fh->model, fwName);
+    fw_fh->component_count = 7;
 
-    // qi: 
+
+    // qi:  4K
     (fw_fh->qi).file.offset = sizeof(firmware_fileheader);
     (fw_fh->qi).file.size = file_size[QI];
     (fw_fh->qi).check_sum = check_sum[QI];
@@ -121,6 +125,13 @@ static void fill_fw_fh(firmware_fileheader *fw_fh)
     (fw_fh->homefs).check_sum = check_sum[HOMEFS];
     (fw_fh->homefs).nand.offset = 0;	// not used
     (fw_fh->homefs).nand.size = file_size[HOMEFS];
+
+   // boot args: 2K
+    (fw_fh->bootArgs).file.offset = (fw_fh->rootfs).file.offset + (fw_fh->rootfs).file.size;
+    (fw_fh->bootArgs).file.size = file_size[BOOTARGS];
+    (fw_fh->bootArgs).check_sum = check_sum[BOOTARGS];
+    (fw_fh->bootArgs).nand.offset = 4097;
+    (fw_fh->bootArgs).nand.size = file_size[BOOTARGS];
 }
 
 static uint32_t get_fw_fh_check_sum(firmware_fileheader *fw_fh)
@@ -138,11 +149,30 @@ int main(int argc, char *argv[])
     int i;
     struct stat buf;
     char system_cmd[512];
+    int fd; /* firmware out */
     
     if(argc < 5 || argc > 7) {
-	printf("usage1: ./compress qi-s3c6410-master_316aa06163e44f90 u-boot.bin zImage rootfs.uboot rootfs-mojo.tgz home-mojo.tgz\nusage2: ./compress qi-s3c6410-master_316aa06163e44f90 u-boot.bin zImage rootfs.uboot\n");
+	printf("Usage: mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz [ rootfs homefs] [bootargs]\n"
+         "or\n"
+         "Usage mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz\n"
+         "where the filesystems may be either tar.gz or tar.xz\n"
+         "NOTE: The name of this binary (mkSmartQ5 or mkSmartQ7) determines\n"
+         "      the target device.\n"
+         );
+
 	exit(-1);
     }
+
+    if (strstr(argv[0], Q5))
+    {
+       fwName = Q5;
+    }
+    else
+    if (strstr(argv[0], Q7)) {
+       fwName = Q7;
+    }
+    else
+       printf("Unknown caller device model.\n");
 
     buffer = (unsigned char *)malloc(SIZE_PER_READ);
     if(NULL == buffer) {
@@ -166,21 +196,20 @@ int main(int argc, char *argv[])
     fw_fh->check_sum = get_fw_fh_check_sum(fw_fh);
     printf("fw_fh->check_sum = %d\n", fw_fh->check_sum);
 
-    sprintf(system_cmd, "rm %s", FIRMWARE_NAME);
-    system(system_cmd);
-    fd_array[FIRMWARE] = open(FIRMWARE_NAME, O_RDWR | O_CREAT, S_IRGRP | S_IWGRP);
-    write(fd_array[FIRMWARE], (void *)fw_fh, sizeof(firmware_fileheader));
-    close(fd_array[FIRMWARE]);
+    unlink(fwName);
+    fd = open(fwName, O_RDWR | O_CREAT, S_IRGRP | S_IWGRP);
+    write(fd, (void *)fw_fh, sizeof(firmware_fileheader));
+    close(fd);
     free(fw_fh);
     free(buffer);
-    sprintf(system_cmd, "cat %s %s %s %s >> %s", argv[1], argv[2], argv[3], argv[4], FIRMWARE_NAME);
-    system(system_cmd);
 
-    if(7 == argc) {
-	sprintf(system_cmd, "cat %s %s >> %s", argv[5], argv[6], FIRMWARE_NAME);
-	system(system_cmd);
-    }
+    /* append each section */
+    for (i = 1 ; i < argc ; i++)  {
     
+        sprintf(system_cmd, "cat %s >> %s", argv[i], fwName);
+        system(system_cmd);
+    }
+
     return 0;
 }
 /******************* End Of File: compress.c *******************/
