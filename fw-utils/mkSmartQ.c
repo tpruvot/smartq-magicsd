@@ -28,14 +28,30 @@
 
 #include "firmware_header.h"
 
+#define MACH_TYPE_SMARTQ5              2534
+#define MACH_TYPE_SMARTQ7              2479
+
 #define SIZE_PER_READ	(4 * 1024 * 1024)   // 4MB
-static const char Q5[] = "SmartQ5";
-static const char Q7[] = "SmartQ7";
+static char Q5[] = "SmartQ5";
+static char Q7[] = "SmartQ7";
 static char *fwName	= Q7;
+static unsigned machType = MACH_TYPE_SMARTQ7; /* default */
 
 static int file_size[MAX_SECTIONS];
 static uint32_t check_sum[MAX_SECTIONS];
 static unsigned char *buffer = NULL;
+
+static char *section[MAX_SECTIONS] = {
+   "QI", 
+   "UBOOT", 
+   "ZIMAGE", 
+   "INITRAMFS",
+   "ROOTFS",
+   "HOMEFS",
+   "BOOTARGS",
+};
+
+
 
 static inline int get_sum(unsigned char *buffer, int buffer_size)
 {
@@ -79,8 +95,7 @@ static void fill_fw_fh(firmware_fileheader *fw_fh)
     fw_fh->date	= time((time_t*)NULL);
     memset(fw_fh->vendor, 0, sizeof(fw_fh->vendor));
     strcpy(fw_fh->vendor, "hhtech");
-    memset(fw_fh->model, 0, sizeof(fw_fh->model));
-    strcpy(fw_fh->model, fwName);
+    fw_fh->machType = machType;  /* use this to boot one-true-smartQ kernel */
     fw_fh->component_count = 7;
 
 
@@ -166,13 +181,19 @@ int main(int argc, char *argv[])
     if (strstr(argv[0], Q5))
     {
        fwName = Q5;
+       machType = MACH_TYPE_SMARTQ5;
     }
     else
     if (strstr(argv[0], Q7)) {
        fwName = Q7;
+       machType = MACH_TYPE_SMARTQ7;
     }
-    else
+    else {
        printf("Unknown caller device model.\n");
+       exit(3);
+    }
+
+    printf("Creating installable image for %s.\n", fwName);
 
     buffer = (unsigned char *)malloc(SIZE_PER_READ);
     if(NULL == buffer) {
@@ -180,24 +201,33 @@ int main(int argc, char *argv[])
 	return -1;
     }
 
-    for (i = 1 ; i < argc; i++) {
-	if(stat(argv[i], &buf) < 0) {
-	    printf("stat %s failed\n", argv[i]); exit(-1);
-	} else { 
-	    file_size[i-1] = buf.st_size;
-	    check_sum[i-1] = get_check_sum(argv[i], file_size[i-1]);
+    for (i = QI ; i < MAX_SECTIONS; i++) {
+	if (i + 1 == argc) break;  /* no more args */
+
+	if (strcmp(argv[i + 1], ".") == 0)  /* skip files named "." */
+	{
+		file_size[i] = 0;
+		check_sum[i] = 0;
+		continue;
 	}
-	printf("arg[%d] = %s, file_size = %d, check_sum = %d\n", i, argv[i], file_size[i-1], check_sum[i-1]);
+	if(stat(argv[i + 1], &buf) < 0) {
+	    printf("stat %s failed\n", argv[i + 1]); exit(-1);
+	} else { 
+	    file_size[i] = buf.st_size;
+	    check_sum[i] = get_check_sum(argv[i + 1], file_size[i]);
+	}
+	printf("arg[%d] section %10s %s size = %d xsum = 0x%x\n", 
+	   i, section[i], argv[i + 1], file_size[i], check_sum[i]);
     }   
     
     firmware_fileheader *fw_fh = (firmware_fileheader *)malloc(sizeof(firmware_fileheader));
     memset(fw_fh, 0, sizeof(firmware_fileheader));
     fill_fw_fh(fw_fh);
     fw_fh->check_sum = get_fw_fh_check_sum(fw_fh);
-    printf("fw_fh->check_sum = %d\n", fw_fh->check_sum);
+    printf("Heade check sum = 0x%x\n", fw_fh->check_sum);
 
     unlink(fwName);
-    fd = open(fwName, O_RDWR | O_CREAT, S_IRGRP | S_IWGRP);
+    fd = open(fwName, O_RDWR | O_CREAT, 0644);
     write(fd, (void *)fw_fh, sizeof(firmware_fileheader));
     close(fd);
     free(fw_fh);

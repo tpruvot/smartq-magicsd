@@ -39,8 +39,8 @@ typedef struct _firmware_fileheader {
     uint32_t fh_size;
     uint32_t version;	 // major.minor.revision.xxx, each section in 8-bits
     uint32_t date;       // seconds since the Epoch
-    char vendor[16];	    // char vendor_string[] 
-    char model[16];	    // name of device
+    char vendor[28];	    // char vendor_string[] 
+    uint32_t machType;   // machine type from linux/include/asm/mach-types.h
     //uint32_t nand_off_end1=16M/512, nand_off_end2=8M/512;  // offset from INAND END(BLOCKS)
     uint32_t component_count /* = 4*/;
     struct {
