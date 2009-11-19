@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
     memset(fw_fh, 0, sizeof(firmware_fileheader));
     fill_fw_fh(fw_fh);
     fw_fh->check_sum = get_fw_fh_check_sum(fw_fh);
-    printf("Heade check sum = 0x%x\n", fw_fh->check_sum);
+    printf("Header check sum = 0x%x\n", fw_fh->check_sum);
 
     unlink(fwName);
     fd = open(fwName, O_RDWR | O_CREAT, 0644);
