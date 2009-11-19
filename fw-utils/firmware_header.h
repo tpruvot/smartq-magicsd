@@ -15,8 +15,8 @@
  *                                                              *
  * Last modified: Wed, 11 Mar 2009 09:05:27 +0800       by root #
  ****************************************************************/
-#ifndef COMPRESS_H
-#define COMPRESS_H
+#ifndef FIRMWARE_HEADER_H
+#define FIRMWARE_HEADER_H
 
 enum sections {
     QI,
@@ -28,8 +28,6 @@ enum sections {
     BOOTARGS,
     MAX_SECTIONS,
 };
-
-#define MAGIC_ENCODER(str) ((str[0]<<24)|(str[1]<<16)|(str[2]<<8)|(str[3]<< 0))
 
 #define NANDBLKSZ            (2048)
 
@@ -43,7 +41,7 @@ typedef struct _firmware_fileheader {
     uint32_t machType;   // machine type from linux/include/asm/mach-types.h
     //uint32_t nand_off_end1=16M/512, nand_off_end2=8M/512;  // offset from INAND END(BLOCKS)
     uint32_t component_count /* = 4*/;
-    struct {
+    struct stanza  {
        struct {
 	       uint32_t offset, size;
 	    } file, nand;
@@ -51,6 +49,8 @@ typedef struct _firmware_fileheader {
     } qi, u_boot, zimage, initramfs, rootfs, homefs, bootArgs; // components[];
 } firmware_fileheader;
 
-#endif//COMPRESS_H
+typedef struct _firmware_fileheader FWFileHdr;
+
+#endif
 /******************* End Of File: compress.h *******************/
 // vim:sts=4:ts=8: 

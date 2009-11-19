@@ -3,17 +3,18 @@
  *                                                              *
  * Description:                                                 *
  *                                                              *
- * Maintainer:  (Meihui Fan)  <mhfan@hhcn.com>            *
+ * Maintainer:  (Meihui Fan)  <mhfan@hhcn.com>                  *
  *                                                              *
  * Copyright (C)  2009  HHTech                                  *
  *   www.hhcn.com, www.hhcn.org                                 *
  *   All rights reserved.                                       *
  *                                                              *
+ * Significant restructure dave at chronolytics dot com         *
+ *                                                              *
  * This file is free software;                                  *
- *   you are free to modify and/or redistribute it   	        *
+ *   you are free to modify and/or redistribute it   	          *
  *   under the terms of the GNU General Public Licence (GPL).   *
  *                                                              *
- * Last modified: 一, 22  6月 2009 09:24:32 +0800       by root #
  ****************************************************************/
 
 #include <fcntl.h>
@@ -21,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -28,6 +30,7 @@
 
 #include "firmware_header.h"
 
+/* see linux/include/asm-xxx/mach-types.h */
 #define MACH_TYPE_SMARTQ5              2534
 #define MACH_TYPE_SMARTQ7              2479
 
@@ -37,20 +40,29 @@ static char Q7[] = "SmartQ7";
 static char *fwName	= Q7;
 static unsigned machType = MACH_TYPE_SMARTQ7; /* default */
 
-static int file_size[MAX_SECTIONS];
-static uint32_t check_sum[MAX_SECTIONS];
 static unsigned char *buffer = NULL;
 
-static char *section[MAX_SECTIONS] = {
-   "QI", 
-   "UBOOT", 
-   "ZIMAGE", 
-   "INITRAMFS",
-   "ROOTFS",
-   "HOMEFS",
-   "BOOTARGS",
-};
+#define NOT_IN_NAND (0)
 
+#define FW_STANZA_OFFSET(stanza) (offsetof(FWFileHdr, stanza))
+
+typedef struct section {
+   const char * name;
+   uint32_t     nandOffset;  /* nand offsets are in 2K blocks */
+   size_t       stanzaOffset;
+   uint32_t     fileSize;
+   uint32_t     checkSum;
+} Section;
+
+static Section sects[MAX_SECTIONS] = {
+   { "QI",        0,           FW_STANZA_OFFSET(qi),        }, 
+   { "UBOOT",     2,           FW_STANZA_OFFSET(u_boot),    },    
+   { "ZIMAGE",    512+2,       FW_STANZA_OFFSET(zimage),    },
+   { "INITRAMFS", 4096,        FW_STANZA_OFFSET(initramfs), },
+   { "ROOTFS",    NOT_IN_NAND, FW_STANZA_OFFSET(rootfs),    },
+   { "HOMEFS",    NOT_IN_NAND, FW_STANZA_OFFSET(homefs),    },
+   { "BOOTARGS",  4097,        FW_STANZA_OFFSET(bootArgs),  }
+};
 
 
 static inline int get_sum(unsigned char *buffer, int buffer_size)
@@ -63,21 +75,22 @@ static inline int get_sum(unsigned char *buffer, int buffer_size)
 
 static uint32_t get_check_sum(char *file_name, int file_size)
 {
+    /* use this to boot one-true-smartQ kernel */
     int fd;
     int remnant_size, size, ret = 0;
     
     fd = open(file_name, O_RDONLY);
     if(-1 == fd) {
-	printf("open %s failed\n", file_name);
-	return -1;
+	    printf("open %s failed\n", file_name);
+	    return -1;
     }
     
     remnant_size = file_size;
     size = 0;
     while(remnant_size / SIZE_PER_READ > 0) {
-	size += read(fd, buffer, SIZE_PER_READ);
-	ret += get_sum(buffer, SIZE_PER_READ);
-	remnant_size = file_size - size;
+	    size += read(fd, buffer, SIZE_PER_READ);
+	    ret += get_sum(buffer, SIZE_PER_READ);
+	    remnant_size = file_size - size;
     }
     size += read(fd, buffer, remnant_size);
     ret += get_sum(buffer, remnant_size);
@@ -87,75 +100,45 @@ static uint32_t get_check_sum(char *file_name, int file_size)
     return ret;
 }
 
-static void fill_fw_fh(firmware_fileheader *fw_fh)
+static void fill_fw_fh(FWFileHdr *fw_fh)
 {
+    unsigned fileOffset = sizeof(FWFileHdr);
+    struct stanza *stp;
+    void* stanzaBase = fw_fh;
+    int i;
+
     fw_fh->magic = 0x39000032;	// '2009'
-    fw_fh->fh_size = sizeof(firmware_fileheader); 
+    fw_fh->fh_size = sizeof(FWFileHdr); 
     fw_fh->version = 1;
     fw_fh->date	= time((time_t*)NULL);
     memset(fw_fh->vendor, 0, sizeof(fw_fh->vendor));
     strcpy(fw_fh->vendor, "hhtech");
-    fw_fh->machType = machType;  /* use this to boot one-true-smartQ kernel */
+
+    /* use this to boot one-true-smartQ kernel */
+    fw_fh->machType = machType;  
+
     fw_fh->component_count = 7;
 
+    for (i = QI ; i < MAX_SECTIONS; fileOffset += sects[i].fileSize, i++) {
+        /* an array would be a lot easier :-) */
+        stp = (struct stanza *) (stanzaBase + sects[i].stanzaOffset);
 
-    // qi:  4K
-    (fw_fh->qi).file.offset = sizeof(firmware_fileheader);
-    (fw_fh->qi).file.size = file_size[QI];
-    (fw_fh->qi).check_sum = check_sum[QI];
-    (fw_fh->qi).nand.offset = 0;
-    (fw_fh->qi).nand.size = file_size[QI];
-    
-    // u-boot: 256KB
-    (fw_fh->u_boot).file.offset = (fw_fh->qi).file.offset + (fw_fh->qi).file.size;
-    (fw_fh->u_boot).file.size = file_size[U_BOOT];
-    (fw_fh->u_boot).check_sum = check_sum[U_BOOT];
-    (fw_fh->u_boot).nand.offset = 2;
-    (fw_fh->u_boot).nand.size = file_size[U_BOOT];
-    
-    // zimage: 2MB - 257KB
-    (fw_fh->zimage).file.offset = (fw_fh->u_boot).file.offset + (fw_fh->u_boot).file.size;
-    (fw_fh->zimage).file.size = file_size[ZIMAGE];
-    (fw_fh->zimage).check_sum = check_sum[ZIMAGE];
-    (fw_fh->zimage).nand.offset = 512 + 2;
-    (fw_fh->zimage).nand.size = file_size[ZIMAGE];
-    
-    // initramfs: 6MB
-    (fw_fh->initramfs).file.offset = (fw_fh->zimage).file.offset + (fw_fh->zimage).file.size;
-    (fw_fh->initramfs).file.size = file_size[INITRAMFS];
-    (fw_fh->initramfs).check_sum = check_sum[INITRAMFS];
-    (fw_fh->initramfs).nand.offset = 4096;
-    (fw_fh->initramfs).nand.size = file_size[INITRAMFS];
-    
-    // rootfs: 
-    (fw_fh->rootfs).file.offset = (fw_fh->initramfs).file.offset + (fw_fh->initramfs).file.size;
-    (fw_fh->rootfs).file.size = file_size[ROOTFS];
-    (fw_fh->rootfs).check_sum = check_sum[ROOTFS];
-    (fw_fh->rootfs).nand.offset = 0;	// not used
-    (fw_fh->rootfs).nand.size = file_size[ROOTFS];
-    
-    // homefs: 
-    (fw_fh->homefs).file.offset = (fw_fh->rootfs).file.offset + (fw_fh->rootfs).file.size;
-    (fw_fh->homefs).file.size = file_size[HOMEFS];
-    (fw_fh->homefs).check_sum = check_sum[HOMEFS];
-    (fw_fh->homefs).nand.offset = 0;	// not used
-    (fw_fh->homefs).nand.size = file_size[HOMEFS];
+        stp->file.offset = fileOffset;
 
-   // boot args: 2K
-    (fw_fh->bootArgs).file.offset = (fw_fh->rootfs).file.offset + (fw_fh->rootfs).file.size;
-    (fw_fh->bootArgs).file.size = file_size[BOOTARGS];
-    (fw_fh->bootArgs).check_sum = check_sum[BOOTARGS];
-    (fw_fh->bootArgs).nand.offset = 4097;
-    (fw_fh->bootArgs).nand.size = file_size[BOOTARGS];
+        stp->file.size   = sects[i].fileSize;
+        stp->check_sum   = sects[i].checkSum;
+        stp->nand.offset = sects[i].nandOffset;
+        stp->nand.size   = sects[i].fileSize;
+    }
 }
 
-static uint32_t get_fw_fh_check_sum(firmware_fileheader *fw_fh)
+static uint32_t get_fw_fh_check_sum(FWFileHdr *fw_fh)
 {
     uint8_t *pchar = (uint8_t *)fw_fh;
     uint32_t i, ret = 0;
 
-    for(i = 8; i < sizeof(firmware_fileheader); i++)
-	ret += pchar[i];
+    for(i = 8; i < sizeof(FWFileHdr); i++)
+	    ret += pchar[i];
     return ret;
 }
 
@@ -167,15 +150,15 @@ int main(int argc, char *argv[])
     int fd; /* firmware out */
     
     if(argc < 5 || argc > 7) {
-	printf("Usage: mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz [ rootfs homefs] [bootargs]\n"
-         "or\n"
-         "Usage mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz\n"
-         "where the filesystems may be either tar.gz or tar.xz\n"
-         "NOTE: The name of this binary (mkSmartQ5 or mkSmartQ7) determines\n"
-         "      the target device.\n"
+	    printf("Usage: mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz [ rootfs homefs] [bootargs]\n"
+             "or\n"
+             "Usage mkSmartQ5/7 qi.bin u-boot.bin zImage initramfs.igz\n"
+             "where the filesystems may be either tar.gz or tar.xz\n"
+             "NOTE: The name of this binary (mkSmartQ5 or mkSmartQ7) determines\n"
+             "      the target device.\n"
          );
 
-	exit(-1);
+	    exit(1);
     }
 
     if (strstr(argv[0], Q5))
@@ -197,47 +180,58 @@ int main(int argc, char *argv[])
 
     buffer = (unsigned char *)malloc(SIZE_PER_READ);
     if(NULL == buffer) {
-	printf("malloc buffer failed\n");
-	return -1;
+	    printf("malloc buffer failed\n");
+	    return -1;
     }
 
+    printf("        Section      Size   Checksum  Name\n");
+    printf("=============================================================\n");
     for (i = QI ; i < MAX_SECTIONS; i++) {
-	if (i + 1 == argc) break;  /* no more args */
+	    if (i + 1 == argc) break;  /* no more args */
 
-	if (strcmp(argv[i + 1], ".") == 0)  /* skip files named "." */
-	{
-		file_size[i] = 0;
-		check_sum[i] = 0;
-		continue;
-	}
-	if(stat(argv[i + 1], &buf) < 0) {
-	    printf("stat %s failed\n", argv[i + 1]); exit(-1);
-	} else { 
-	    file_size[i] = buf.st_size;
-	    check_sum[i] = get_check_sum(argv[i + 1], file_size[i]);
-	}
-	printf("arg[%d] section %10s %s size = %d xsum = 0x%x\n", 
-	   i, section[i], argv[i + 1], file_size[i], check_sum[i]);
+	    if (strcmp(argv[i + 1], ".") == 0)  /* skip files named "." */
+	    {
+		    sects[i].fileSize = 0;
+		    sects[i].checkSum = 0;
+		    continue;
+	    }
+	    if(stat(argv[i + 1], &buf) < 0) {
+	        printf("stat %s failed\n", argv[i + 1]); exit(4);
+	    } else { 
+	        sects[i].fileSize = buf.st_size;
+	        sects[i].checkSum = get_check_sum(argv[i + 1], buf.st_size);
+	    }
+       printf("%3d %11s %9d 0x%08x  %s\n",
+	       i, sects[i].name, sects[i].fileSize, sects[i].checkSum, argv[i + 1]);
     }   
     
-    firmware_fileheader *fw_fh = (firmware_fileheader *)malloc(sizeof(firmware_fileheader));
-    memset(fw_fh, 0, sizeof(firmware_fileheader));
+    FWFileHdr *fw_fh = (FWFileHdr *) calloc(sizeof(FWFileHdr), 1);
+
     fill_fw_fh(fw_fh);
+
     fw_fh->check_sum = get_fw_fh_check_sum(fw_fh);
+
     printf("Header check sum = 0x%x\n", fw_fh->check_sum);
 
     unlink(fwName);
     fd = open(fwName, O_RDWR | O_CREAT, 0644);
-    write(fd, (void *)fw_fh, sizeof(firmware_fileheader));
+
+    if (fd == -1) {
+       printf("Cannot open firmware file: %s.\n", strerror(errno));
+       exit(2);
+    }
+
+    write(fd, (void *)fw_fh, sizeof(FWFileHdr));
     close(fd);
     free(fw_fh);
     free(buffer);
 
     /* append each section */
     for (i = 1 ; i < argc ; i++)  {
-    
-        sprintf(system_cmd, "cat %s >> %s", argv[i], fwName);
-        system(system_cmd);
+	    if (strcmp(argv[i], ".") == 0)  /* skip files named "." */
+	       continue;
+       sprintf(system_cmd, "cat %s >> %s", argv[i], fwName);
+       system(system_cmd);
     }
 
     return 0;
