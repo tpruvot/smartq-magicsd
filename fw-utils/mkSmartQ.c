@@ -22,17 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stddef.h>
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
 
 #include "firmware_header.h"
-
-/* see linux/include/asm-xxx/mach-types.h */
-#define MACH_TYPE_SMARTQ5              2534
-#define MACH_TYPE_SMARTQ7              2479
 
 #define SIZE_PER_READ	(4 * 1024 * 1024)   // 4MB
 static char Q5[] = "SmartQ5";
@@ -43,8 +38,6 @@ static unsigned machType = MACH_TYPE_SMARTQ7; /* default */
 static unsigned char *buffer = NULL;
 
 #define NOT_IN_NAND (0)
-
-#define FW_STANZA_OFFSET(stanza) (offsetof(FWFileHdr, stanza))
 
 typedef struct section {
    const char * name;
@@ -104,7 +97,6 @@ static void fill_fw_fh(FWFileHdr *fw_fh)
 {
     unsigned fileOffset = sizeof(FWFileHdr);
     struct stanza *stp;
-    void* stanzaBase = fw_fh;
     int i;
 
     fw_fh->magic = 0x39000032;	// '2009'
@@ -121,7 +113,7 @@ static void fill_fw_fh(FWFileHdr *fw_fh)
 
     for (i = QI ; i < MAX_SECTIONS; fileOffset += sects[i].fileSize, i++) {
         /* an array would be a lot easier :-) */
-        stp = (struct stanza *) (stanzaBase + sects[i].stanzaOffset);
+        stp = (struct stanza *) ((void*) fw_fh + sects[i].stanzaOffset);
 
         stp->file.offset = fileOffset;
 
