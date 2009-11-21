@@ -11,7 +11,7 @@ MKIMAGE_ARGS= -A ARM -O Linux -C gzip -T RAMDisk -n $(IMAGE_NAME)
 
 all:	initramfs.igz
 
-initramfs.gz:	
+initramfs.gz:	initramfs/bin/upgrade
 	(cd initramfs ; find . -print  | cpio -o --format=newc --owner=0) | gzip -c -9 > $@
 
 %.igz:	%.gz
