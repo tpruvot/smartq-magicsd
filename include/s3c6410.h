@@ -62,6 +62,9 @@
 #define MOVI_BL2_POS		(MOVI_LAST_BLKPOS - MOVI_BL1_BLKCNT - MOVI_BL2_BLKCNT - MOVI_ENV_BLKCNT)
 #ifndef __ASSEMBLY__
 
+typedef unsigned int uint;
+typedef unsigned long ulong;
+
 struct movi_offset_t {
 	uint	last;
 	uint	bl1;
@@ -612,6 +615,8 @@ typedef enum {
 #define DMC_PA1 			0x100000
 #define DMC_AR0 			0x040000	//Autorefresh
 #define DMC_AR1 			0x140000
+
+#if 0 /* thanks for documenting what chip this "junk" describes */
 #define DMC_SDR_MR0			0x080032	//MRS, CAS 3,  Burst Length 4
 #define DMC_SDR_MR1			0x180032
 #define DMC_DDR_MR0			0x080162
@@ -624,6 +629,7 @@ typedef enum {
 #define DMC_DDR_EMR1			0x190000
 #define DMC_mDDR_EMR0			0x0a0000	// DS:Full, PASR:Full Array
 #define DMC_mDDR_EMR1			0x1a0000
+#endif
 
 
 /****************************************************************

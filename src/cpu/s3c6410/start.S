@@ -41,19 +41,22 @@
 #if defined(CONFIG_CLK_666_166_66) /* FIN 12MHz, Fout 666MHz */
 
 #define APLL_MDIV       333
+#define MPLL_MDIV	      333
 #define	Startup_PCLKdiv		4
-// #undef  CONFIG_SYNC_MODE /* ASYNC MODE */
-#define CONFIG_SYNC_MODE
+#undef  CONFIG_SYNC_MODE /* ASYNC MODE */
+// #define CONFIG_SYNC_MODE /* this does not appear to work */
 
 #elif defined(CONFIG_CLK_666_133_66) /* FIN 12MHz, Fout 666MHz */
 
 #define APLL_MDIV       333
+#define MPLL_MDIV	      266
 #define	Startup_PCLKdiv		3
 #undef  CONFIG_SYNC_MODE /* ASYNC MODE */
 
 #elif defined(CONFIG_CLK_532_133_66) /* FIN 12MHz, Fout 532MHz */
 
 #define APLL_MDIV       266
+#define MPLL_MDIV	      266
 #define	Startup_PCLKdiv		3
 #define CONFIG_SYNC_MODE
 
@@ -65,8 +68,6 @@
 #define CONFIG_SYS_CLK_FREQ     12000000  /* the SmartQ has 12MHz input clock */
 
 
-/* fixed MPLL 533MHz */
-#define MPLL_MDIV	266
 #define MPLL_PDIV	3
 #define MPLL_SDIV	1
 
@@ -102,11 +103,18 @@
 #define APLL_VAL	set_pll(APLL_MDIV, APLL_PDIV, APLL_SDIV)
 #define MPLL_VAL	set_pll(MPLL_MDIV, MPLL_PDIV, MPLL_SDIV)
 
-/* this is 24MHz for an Fin of 12MHz */
 #define EPLL_ENABLE	(1  << 31)
 #define EPLL_MDIV	(32 << 16)
+
+#ifdef EPLL_24MHZ
+/* this is 24MHz for an Fin of 12MHz */
 #define EPLL_PDIV	(2  <<  8)
 #define EPLL_SDIV	(3  <<  0)
+#endif
+/* this is for 192MHz for Fin of 12MHz */
+#define EPLL_PDIV	(2  <<  8)
+#define EPLL_SDIV	(3  <<  0)
+
 #define EPLL_VAL 	(EPLL_ENABLE|EPLL_MDIV|EPLL_PDIV|EPLL_SDIV)
 
 /* These are the fields for the DMC CFG register */

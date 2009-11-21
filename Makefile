@@ -18,20 +18,24 @@ include config.mk
 
 BUILD_DATE := $(shell date +%D-%T)
 BUILD_HOST := $(shell hostname)
-BUILD_BRANCH := $(shell git branch | grep ^\* | cut -d' ' -f2)
-BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut -b1-16)
+#BUILD_BRANCH := $(shell git branch | grep ^\* | cut -d' ' -f2)
+# BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut -b1-16)
+BUILD_BRANCH := smartQ
+BUILD_HEAD := 111909
 BUILD_VERSION := ${BUILD_BRANCH}_${BUILD_HEAD}
 
-LDS	= src/cpu/$(CPU)/qi.lds
+# LDS	= src/cpu/$(CPU)/qi.lds
 LDS	= src/cpu/$(CPU)/hhqi.lds
 INCLUDE	= include
 IMAGE_DIR	= image
 TOOLS	= tools
-CFLAGS	= -Wall -Werror -I $(INCLUDE) -g -c -Os -fno-strict-aliasing -mlong-calls \
+CFLAGS	= -Wall -Werror -I $(INCLUDE) -c -Os -fno-strict-aliasing -mlong-calls \
 	  -fno-common -ffixed-r8 -msoft-float -fno-builtin -ffreestanding \
 	  -march=armv4t -mno-thumb-interwork -Wstrict-prototypes \
 	  -DBUILD_HOST="${BUILD_HOST}" -DBUILD_VERSION="${BUILD_VERSION}" \
-	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DHHTECH_MINIPMP
+	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DHHTECH_MINIPMP \
+          -D${SPEED}
+
 LDFLAGS = 
 
 S_SRCS	= $(wildcard src/cpu/$(CPU)/*.S)
@@ -66,10 +70,10 @@ UDFU_IMAGE = $(IMAGE_DIR)/qi-$(CPU)-$(BUILD_VERSION).udfu
 MKUDFU = $(TOOLS)/mkudfu
 
 %.o: %.S
-	@$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<
 
 %.o: %.c
-	@$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<
 
 all:${UDFU_IMAGE}
 
