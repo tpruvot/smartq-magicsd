@@ -76,6 +76,21 @@ enum {
     BITMAP_MATRIX
 };
 
+typedef struct section {
+   const char * name;
+   size_t       stanzaOffset;
+} Section;
+
+static Section sects[MAX_SECTIONS] = {
+   { "QI",        FW_STANZA_OFFSET(qi),        }, 
+   { "UBOOT",     FW_STANZA_OFFSET(u_boot),    },    
+   { "ZIMAGE",    FW_STANZA_OFFSET(zimage),    },
+   { "INITRAMFS", FW_STANZA_OFFSET(initramfs), },
+   { "ROOTFS",    FW_STANZA_OFFSET(rootfs),    },
+   { "HOMEFS",    FW_STANZA_OFFSET(homefs),    },
+   { "BOOTARGS",  FW_STANZA_OFFSET(bootArgs),  }
+};
+
 static RGBLCD COLOR_WHITE = {255, 255, 255};
 static RGBLCD COLOR_GREEN = {0, 255, 0};
 static RGBLCD COLOR_RED    = {255, 0, 0};
@@ -111,7 +126,7 @@ font_type font_0612 = {S0612, 8, 16};
 static screen_buffer *sb = NULL;
 static int fbmemlen;
 static int loading_homefs = 0;
-int keep_userzone = 0;
+static int keep_userzone = 0;
 static float ratio, old_ratio;
 
 void draw_string_en(char *str)
@@ -251,7 +266,7 @@ static char inand_partition_path[30];
 static char system_cmd[100];
 static unsigned char *buffer = NULL;
 static uint32_t inand_check_sum;
-uint32_t total_size_sum, size_sum, old_size_sum;
+static uint32_t total_size_sum, size_sum, old_size_sum;
 
 int loading(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_color, RGBLCD *trim_color)
 {
@@ -695,6 +710,7 @@ int main( int argc, char *argv[] )
     int keys_fd;
     struct input_event event;
     struct timeval tpStart, tpEnd;
+    struct stanza *stp;
 
     if(argc != 4) {
         fprintf(stderr, "usage: ./upgrade firmware_file inand_device 0/1\n"
@@ -800,15 +816,33 @@ int main( int argc, char *argv[] )
     draw_string_zh("正在校验固件...\n");
     draw_string_en("Verifying the firmware...\n");
     fw_fh = (firmware_fileheader *)malloc(sizeof(firmware_fileheader));
-    ret = uncompress(argv[1], fw_fh);
+    ret = extract(argv[1], fw_fh);
     if(ret != 0) {
-        fprintf(stderr, "main: uncompress firmware file %s failed\n", argv[1]);
+        fprintf(stderr, "main: extract firmware file %s failed\n", argv[1]);
         draw_string_zh("校验固件失败！\n");
         draw_string_en("Verifying the firmware failed!\n");
         goto fail2;
     }
 
+    /* bizarre algorithm left for your amusement : WTF, over. */
+    total_size_sum = fw_fh->homefs.file.offset;
+
+    /* add in size of homefs if we are using it */
+    if(!keep_userzone)
+       total_size_sum += fw_fh->homefs.file.size;
+
+    total_size_sum += fw_fh->fh_size + 
+                      fw_fh->u_boot.file.size +
+                      fw_fh->zimage.file.size + 
+                      fw_fh->initramfs.file.size;
+
+    /* got me on this one */
+    total_size_sum -= fw_fh->qi.file.size;
+
+    fprintf(stderr, "total_size_sum = %d\n", total_size_sum);
+
     fd_sd = open(argv[1], O_RDONLY);
+
     if(fd_sd == -1) {
         fprintf(stderr, "main: open firmware file %s on sd card failed\n", argv[1]);
         goto fail2;
