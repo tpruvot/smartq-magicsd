@@ -18,6 +18,8 @@
 #ifndef FIRMWARE_HEADER_H
 #define FIRMWARE_HEADER_H
 
+#include <stddef.h>  /* offsetof */
+
 enum sections {
     QI,
     U_BOOT,
@@ -30,6 +32,10 @@ enum sections {
 };
 
 #define NANDBLKSZ            (2048)
+
+/* see linux/include/asm-xxx/mach-types.h */
+#define MACH_TYPE_SMARTQ5              2534
+#define MACH_TYPE_SMARTQ7              2479
 
 typedef struct _firmware_fileheader {
     uint32_t magic;	    // '2009'
@@ -50,6 +56,8 @@ typedef struct _firmware_fileheader {
 } firmware_fileheader;
 
 typedef struct _firmware_fileheader FWFileHdr;
+
+#define FW_STANZA_OFFSET(stanza) (offsetof(FWFileHdr, stanza))
 
 #endif
 /******************* End Of File: compress.h *******************/
