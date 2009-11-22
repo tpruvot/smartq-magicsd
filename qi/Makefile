@@ -21,7 +21,7 @@ BUILD_HOST := $(shell hostname)
 #BUILD_BRANCH := $(shell git branch | grep ^\* | cut -d' ' -f2)
 # BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut -b1-16)
 BUILD_BRANCH := smartQ
-BUILD_HEAD := 111909
+BUILD_HEAD := 112109
 BUILD_VERSION := ${BUILD_BRANCH}_${BUILD_HEAD}
 
 # LDS	= src/cpu/$(CPU)/qi.lds
@@ -31,7 +31,7 @@ IMAGE_DIR	= image
 TOOLS	= tools
 CFLAGS	= -Wall -Werror -I $(INCLUDE) -c -Os -fno-strict-aliasing -mlong-calls \
 	  -fno-common -ffixed-r8 -msoft-float -fno-builtin -ffreestanding \
-	  -march=armv4t -mno-thumb-interwork -Wstrict-prototypes \
+	  -mcpu=arm1176jzf-s -mno-thumb-interwork -Wstrict-prototypes \
 	  -DBUILD_HOST="${BUILD_HOST}" -DBUILD_VERSION="${BUILD_VERSION}" \
 	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DHHTECH_MINIPMP \
           -D${SPEED}
