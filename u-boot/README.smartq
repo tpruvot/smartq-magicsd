@@ -1,0 +1,6 @@
+
+To build for smartQ:
+
+make smdk6410_config
+
+--dfc 11212009
