@@ -30,7 +30,6 @@
 #define __CONFIG_H
 
 #define CONFIG_HHTECH_MINIPMP 
-  #define BRANCH_7INCH          1
 /*
  * High Level Configuration Options
  * (easy to change)
@@ -70,8 +69,7 @@
 /*
  * Architecture magic and machine type
  */
-#define MACH_TYPE		1626
-#define UBOOT_MAGIC		(0x43090000 | MACH_TYPE)
+/* moved to get_mach_type() */
 
 /* Power Management is enabled */
 #define CONFIG_PM
@@ -432,7 +430,7 @@
  * SMDK6400 board specific data
  */
 
-#define CONFIG_IDENT_STRING	" for SMDK6410"
+#define CONFIG_IDENT_STRING	" for SmartQ5/SmartQ7"
 
 /* total memory required by uboot */
 #define CFG_UBOOT_SIZE		(2*1024*1024)

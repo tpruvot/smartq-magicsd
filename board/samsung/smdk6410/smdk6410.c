@@ -56,10 +56,11 @@ static void cs8900_pre_init(void)
 int board_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
+	int get_mach_type(void);
 
 	cs8900_pre_init();
 
-	gd->bd->bi_arch_number = MACH_TYPE;
+	gd->bd->bi_arch_number = get_mach_type();
 	gd->bd->bi_boot_params = (PHYS_SDRAM_1+0x100);
 
 #if 0

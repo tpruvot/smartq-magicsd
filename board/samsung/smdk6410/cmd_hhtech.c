@@ -21,6 +21,7 @@
 #include <command.h>
 #include <s3c6410.h>
 #include "hhtech.h"
+#include "asm/mach-types.h"
 
 //#define PASSWD
 #ifdef PASSWD
@@ -29,9 +30,6 @@
 #endif
 
 #ifdef CONFIG_HHTECH_MINIPMP
-
-#define LCD_4
-//#undef	LCD_4
 
 #if 1
   #define  PFUNC(fmt, args...) \
@@ -50,11 +48,12 @@
   #define INAND_KERNEL0_BEND  (( 8<<20)/INAND_BLOCK_SIZE) // 8M*2 block from end
   #define INAND_KERNEL1_BEND  ((16<<20)/INAND_BLOCK_SIZE)
 
-#ifdef	LCD_4
-#define FIRMWARE                "/SmartQ5"
-#else
-#define FIRMWARE                "/SmartQ7"
-#endif
+static const char Q5[] =                "/SmartQ5";
+static const char Q7[] =                "/SmartQ7";
+static char *firmware = Q7;
+
+static int machType = MACH_TYPE_SMARTQ7;
+
 #define UBOOTNAME               "/u-boot.bin"
 #ifdef CONFIG_ENABLE_MMU
   #define MEM_KERNEL_START        0xC0008000	/* read card file to here */
@@ -123,7 +122,7 @@ static int file_check_sum(void *addr, int len)
     unsigned long check = 0, i, ret = -1;
     unsigned long *pp = (unsigned long*)addr;
 
-    if(len % 4 != 0)        {
+    if(len & 0x3 != 0)        {
 		printf("u-boot.ldr or firmware.bin size error(%d)\n", len);
 		return -1;
     }
@@ -143,32 +142,36 @@ static int file_check_sum(void *addr, int len)
 #define GPIO_GPN13   (('N'-'A')*16 + 13)
 #define GPIO_GPN14   (('N'-'A')*16 + 14)
 
-static int get_dc_status(void)
+unsigned get_mach_type(void)
 {
-#if defined(LCD_4)
-    return gpio_get_value(GPIO_DCIN);
-#else
-    return !gpio_get_value(GPIO_DCIN);
-#endif
+   return machType;
 }
 
-// LED is on GPN8 and GPN9
-#if defined(LCD_4)
+static int get_dc_status(void)
+{
+    if (machType == MACH_TYPE_SMARTQ5)
+       return gpio_get_value(GPIO_DCIN);
+    else
+       return !gpio_get_value(GPIO_DCIN);
+
+}
+
+// LED is on GPN8 and GPN9 (on Q5, reverse on Q7)
 #define GPIO_LED_0  (('N'-'A')*16 + 8)
 #define GPIO_LED_1  (('N'-'A')*16 + 9)
-#else
-#define GPIO_LED_0  (('N'-'A')*16 + 9)
-#define GPIO_LED_1  (('N'-'A')*16 + 8)
-#endif
+
 static int set_led(int flag)
 {
-    flag = flag % 4;
+    flag = flag & 0x3;
 
-    if(flag & 0x01) gpio_direction_output(GPIO_LED_0, 0);
-    else            gpio_direction_output(GPIO_LED_0, 1);
+    unsigned led0 = (machType == MACH_TYPE_SMARTQ5) ? GPIO_LED_0 : GPIO_LED_1;
+    unsigned led1 = (machType == MACH_TYPE_SMARTQ5) ? GPIO_LED_1 : GPIO_LED_0;
 
-    if(flag & 0x02) gpio_direction_output(GPIO_LED_1, 0);
-    else            gpio_direction_output(GPIO_LED_1, 1);
+    if(flag & 0x01) gpio_direction_output(led0, 0);
+    else            gpio_direction_output(led0, 1);
+
+    if(flag & 0x02) gpio_direction_output(led1, 0);
+    else            gpio_direction_output(led1, 1);
 
     return 0;
 }
@@ -234,35 +237,23 @@ static int do_firmware_error(int flag, int param)
 #ifdef INAND_RW_DIRECT
 #include <part.h>
 #define  HEAD_MAGIC     0x39000032 // 2009
-typedef struct _firmware_fileheader {
-    uint32_t magic;        // '2009'
-    uint32_t check_sum; // for 8 ~ .fh_size 
-    uint32_t fh_size;
-    uint32_t version;      // major.minor.revision.xxx, each section in 8-bits
-    uint32_t date;          // seconds since the Epoch
-    char vendor[32];       // XXX: uint32_t vendor_string_len; char vendor_string[] 
-    //uint32_t nand_off_end1=16M/512, nand_off_end2=8M/512;  // offset from INAND END(BLOCKS)
-    uint32_t component_count /* = 4*/;
-    struct {
-	struct {
-	    uint32_t offset, size;
-	} file, nand;
-	uint32_t check_sum;
-    }qi, u_boot, zimage, initramfs, rootfs, homefs; // components[];
-}FirmHead;
+
+/* hardcoded pro-tem */
+#include "/usr/src/smartQ/smartq-initramfs/fw-utils/firmware_header.h"
+
 extern block_dev_desc_t * mmc_get_dev(int dev);
 extern void mmc_release_dev(int dev);
 
 static int do_read_inand(int dev, ulong offset_end_inand, int flag)
 {
     ulong blk_addr, blk_num;
-    FirmHead  *fh = (FirmHead*)MEM_READ_FILE;
+    firmware_fileheader  *fh = (firmware_fileheader*)MEM_READ_FILE;
     block_dev_desc_t *desc = NULL;
     
     if(!(desc = mmc_get_dev(dev))) return -1;
 
     blk_addr = desc->lba - offset_end_inand;
-    memset(fh, 0, sizeof(FirmHead));
+    memset(fh, 0, sizeof(firmware_fileheader));
     desc->block_read(dev, blk_addr, 1, (ulong*)fh);
     PFUNC("vendor = %s\n", fh->vendor);
     
@@ -291,12 +282,12 @@ static int do_readsd_upgrade(int dev, char *file)
 {
     int size;
     unsigned char *ptr, *ptrsrc;
-    FirmHead  *fh = (FirmHead*)MEM_READ_FILE;
+    firmware_fileheader  *fh = (firmware_fileheader*)MEM_READ_FILE;
 
 #ifdef DEBUG
     set_led(3);
 #endif
-    memset(fh, 0, sizeof(FirmHead));
+    memset(fh, 0, sizeof(firmware_fileheader));
     size = load_sd_file(dev, file, (u32)fh, INAND_BLOCK_SIZE);
 
     PFUNC("vendor = %s\n", fh->vendor);
@@ -304,6 +295,14 @@ static int do_readsd_upgrade(int dev, char *file)
 	printf("magic error\n");
 	return -2;
     }
+
+    if (fh->machType == 0)  /* older software */
+      fh->machType = MACH_TYPE_SMDK6410;
+    else
+      machType = fh->machType; /* make a file-local copy */
+
+    if (fh->machType == MACH_TYPE_SMARTQ5)
+      firmware = Q5;
 
     if(fh->initramfs.file.offset > fh->zimage.file.offset) 
 	size = fh->initramfs.file.offset + fh->initramfs.file.size;
@@ -353,8 +352,8 @@ int do_start_firmware(int flag, char *file)
     }
 
     if(flag) {
-	printf("\nLoad upgrade image from SD(%s)\n", FIRMWARE);
-	do_readsd_upgrade(0, FIRMWARE);
+	printf("\nLoad upgrade image from SD(%s)\n", firmware);
+	do_readsd_upgrade(0, firmware);
     }
 
 #else
@@ -367,7 +366,7 @@ int do_start_firmware(int flag, char *file)
 
   #elif defined(CONFIG_BOOT_NOR)
     printf("Load firm from SD file\n");
-    if(!file)	file = FIRMWARE;
+    if(!file)	file = firmware;
     ret = load_sd_file(file, MEM_READ_FILE, 0);
     if(ret >= 0 ) {
 	ret = boot_image(MEM_READ_FILE, 0);
@@ -401,8 +400,8 @@ static int do_upgrade(int flag, int param)
     }
 
 up_from_sd:
-    printf("Load upgrade IMG from SD(%s)\n", FIRMWARE);
-    do_readsd_upgrade(0, FIRMWARE);
+    printf("Load upgrade IMG from SD(%s)\n", firmware);
+    do_readsd_upgrade(0, firmware);
 
 #else
     load_boot_kernel(0, 0);

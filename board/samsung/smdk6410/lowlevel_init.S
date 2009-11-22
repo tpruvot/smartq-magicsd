@@ -85,8 +85,15 @@ lowlevel_init:
 	str	r3, [r1, #oVECTADDR]
 
 	/* init system clock */
+	ldr	r0, =0xff000fff
+	bic	r1, pc, r0		/* r0 <- current base addr of code */
+	ldr	r2, _TEXT_BASE		/* r1 <- original base addr in ram */
+	bic	r2, r2, r0		/* r0 <- current base addr of code */
+	cmp 	r1, r2			/* compare r0, r1                  */
+	beq	no_system_clock_init	/* r0 == r1 then skip clocks init   */
 	bl system_clock_init
 
+no_system_clock_init:
 	/* for UART */
 	bl uart_asm_init
 
@@ -95,17 +102,19 @@ lowlevel_init:
 	bl nand_asm_init
 #endif
 
-#if 0
+/* if we are already in RAM, then skip the DRAM config */
+#if 1 /* was #if 0 */
 	ldr	r0, =0xff000fff
 	bic	r1, pc, r0		/* r0 <- current base addr of code */
 	ldr	r2, _TEXT_BASE		/* r1 <- original base addr in ram */
 	bic	r2, r2, r0		/* r0 <- current base addr of code */
 	cmp 	r1, r2			/* compare r0, r1                  */
-	beq	1f			/* r0 == r1 then skip sdram init   */
+	beq	no_dram_init		/* r0 == r1 then skip sdram init   */
 #endif
 
 	bl	mem_ctrl_asm_init
 
+no_dram_init:
 #if 1
         ldr     r0, =(ELFIN_CLOCK_POWER_BASE+RST_STAT_OFFSET)
         ldr     r1, [r0]
@@ -115,7 +124,6 @@ lowlevel_init:
 
 #endif
 
-1:
 	ldr	r0, =ELFIN_UART_BASE
 	ldr	r1, =0x4b4b4b4b
 	str	r1, [r0, #UTXH_OFFSET]

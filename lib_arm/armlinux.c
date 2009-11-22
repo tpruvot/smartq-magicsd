@@ -265,7 +265,12 @@ void do_bootm_linux (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[],
 	}
 #endif
 
+	printf ("cleaning up prior to theKernel...\n");
+
 	cleanup_before_linux ();
+
+	printf ("## Transferring control to Linux @ 0x%08lx...\n",
+	       (ulong) theKernel);
 
 	theKernel (0, bd->bi_arch_number, bd->bi_boot_params);
 }
