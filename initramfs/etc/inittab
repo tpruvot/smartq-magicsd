@@ -88,8 +88,7 @@ null::respawn:/sbin/klogd -n
 #console::sysinit:/bin/lcd_test
 #console::sysinit:/bin/debug
 console::sysinit:/bin/stty sane
-#console::sysinit:/bin/upgrade /mnt/mmcblk1p1/SmartQ5 /dev/mmcblk0 1
-console::sysinit:/bin/upgrade /mnt/mmcblk1p1/SmartQ7 /dev/mmcblk0 1
+console::sysinit:/bin/upgrade /mnt/mmcblk1p1/SmartQ* /dev/mmcblk0 1
 #null::sysinit:/bin/sleep 2
 #null::sysinit:/sbin/poweroff
 
