@@ -88,7 +88,7 @@ static Section sects[MAX_SECTIONS] = {
    { "INITRAMFS", FW_STANZA_OFFSET(initramfs), },
    { "ROOTFS",    FW_STANZA_OFFSET(rootfs),    },
    { "HOMEFS",    FW_STANZA_OFFSET(homefs),    },
-   { "BOOTARGS",  FW_STANZA_OFFSET(bootArgs),  }
+//    { "BOOTARGS",  FW_STANZA_OFFSET(bootArgs),  }
 };
 
 static RGBLCD COLOR_WHITE = {255, 255, 255};
@@ -328,11 +328,26 @@ int loading_fs(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_co
     char s[100];
     int fd[2];
     pid_t pid;
+    char sniffer[2];
+    const char lzma[] = { 0x37, 0xfd };
+    const char gzip[] = { 0x8b, 0x1f };
+    /* assume gzip */
+    char *untar = "/usr/bin/tar zxf - -C /mnt/upgrade";
     struct timeval tpStart, tpEnd;
     float timeUse;
 
     size = 0;
     remnant_size = total_size;
+
+    read(fd_sd, sniffer, 2);
+
+    lseek(fd_sd, -2, SEEK_CUR); /* status quo ante */
+
+    if (memcmp(sniffer, lzma, sizeof(lzma) == 0))
+    {
+       char *untar = "/usr/bin/tar Jxf - -C /mnt/upgrade";
+    }
+
     gettimeofday(&tpStart, NULL);
     
     if(pipe(fd) < 0) {
@@ -397,13 +412,9 @@ int loading_fs(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_co
             close(fd[0]);   // don't need this after dup2
         } 
 
-        ret = WEXITSTATUS(system("/usr/bin/tar Jxf - -C /mnt/upgrade"));
+        ret = WEXITSTATUS(system(untar));
         if (ret) {
-       /* rut roh xz tar failed.  Try gz */
-           ret = WEXITSTATUS(system("/usr/bin/tar Jxf - -C /mnt/upgrade"));
-           if (ret) {
-              fprintf(stderr,"un-tar of %s fails.\n", name_en);
-           }
+           fprintf(stderr,"un-tar of %s fails.\n", name_en);
         }
     }
 
@@ -455,7 +466,6 @@ static uint32_t get_check_sum(int file_size)
 static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_color)
 {
     char err[120];
-
     /* draw the external box of progress bar first */
     fill_broken_rect(sb, PROGRESS_BAR_X_OFFSET, PROGRESS_BAR_ZH_OFFSET, PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT, trim_color);
     old_ratio = ratio = 0;
@@ -639,6 +649,7 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
 
             return -1;
         }
+
         if(0 != loading_fs("ÕýÔÚÉý¼¶... ", "Upgrading... ", (fw_fh->rootfs).file.size, bar_color, trim_color))  {
            draw_string_en("Loading rootfs fails");
            sleep(5);
@@ -710,7 +721,6 @@ int main( int argc, char *argv[] )
     int keys_fd;
     struct input_event event;
     struct timeval tpStart, tpEnd;
-    struct stanza *stp;
 
     if(argc != 4) {
         fprintf(stderr, "usage: ./upgrade firmware_file inand_device 0/1\n"

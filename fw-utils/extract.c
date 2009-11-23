@@ -41,7 +41,7 @@ static Section sects[MAX_SECTIONS] = {
    { "INITRAMFS", FW_STANZA_OFFSET(initramfs), },
    { "ROOTFS",    FW_STANZA_OFFSET(rootfs),    },
    { "HOMEFS",    FW_STANZA_OFFSET(homefs),    },
-   { "BOOTARGS",  FW_STANZA_OFFSET(bootArgs),  }
+//    { "BOOTARGS",  FW_STANZA_OFFSET(bootArgs),  }
 };
 
 
@@ -50,7 +50,7 @@ static uint32_t get_fw_fh_check_sum(firmware_fileheader *fw_fh)
     uint8_t *pchar = (uint8_t *)fw_fh;
     uint32_t i, ret = 0;
 
-    for(i = 8; i < sizeof(firmware_fileheader); i++)
+    for(i = 8; i < fw_fh->fh_size ; i++)
 	ret += pchar[i];
     return ret;
 }
@@ -104,7 +104,7 @@ int extract(char *filename, firmware_fileheader *fw_fh)
        }
     }
 
-    fprintf(stderr, "Header:    file_size       = %d\n", fw_fh->fh_size);
+    fprintf(stderr, "Header:    header size     = %d\n", fw_fh->fh_size);
     fprintf(stderr, "Header:    version         = %d\n", fw_fh->version);
     fprintf(stderr, "Header:    date	        = %d\n", fw_fh->date);
     fprintf(stderr, "Header:    vendor          = %s\n", fw_fh->vendor);

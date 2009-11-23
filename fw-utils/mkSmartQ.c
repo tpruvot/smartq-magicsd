@@ -54,7 +54,7 @@ static Section sects[MAX_SECTIONS] = {
    { "INITRAMFS", 4096,        FW_STANZA_OFFSET(initramfs), },
    { "ROOTFS",    NOT_IN_NAND, FW_STANZA_OFFSET(rootfs),    },
    { "HOMEFS",    NOT_IN_NAND, FW_STANZA_OFFSET(homefs),    },
-   { "BOOTARGS",  4097,        FW_STANZA_OFFSET(bootArgs),  }
+//    { "BOOTARGS",  4097,        FW_STANZA_OFFSET(bootArgs),  }
 };
 
 
@@ -109,7 +109,7 @@ static void fill_fw_fh(FWFileHdr *fw_fh)
     /* use this to boot one-true-smartQ kernel */
     fw_fh->machType = machType;  
 
-    fw_fh->component_count = 7;
+    fw_fh->component_count = MAX_SECTIONS;
 
     for (i = QI ; i < MAX_SECTIONS; fileOffset += sects[i].fileSize, i++) {
         /* an array would be a lot easier :-) */

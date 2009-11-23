@@ -27,7 +27,7 @@ enum sections {
     INITRAMFS,
     ROOTFS,
     HOMEFS,
-    BOOTARGS,
+//     BOOTARGS,  HHTECH "upgrade" has a bug that fails for this case
     MAX_SECTIONS,
 };
 
@@ -52,7 +52,7 @@ typedef struct _firmware_fileheader {
 	       uint32_t offset, size;
 	    } file, nand;
 	    uint32_t check_sum;
-    } qi, u_boot, zimage, initramfs, rootfs, homefs, bootArgs; // components[];
+    } qi, u_boot, zimage, initramfs, rootfs, homefs; // bootArgs; // components[];
 } firmware_fileheader;
 
 typedef struct _firmware_fileheader FWFileHdr;
