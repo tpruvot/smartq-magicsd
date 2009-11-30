@@ -30,33 +30,55 @@
 #define S3C6410_POP_A 1
 #endif
 
-#define set_pll(mdiv, pdiv, sdiv)	(1<<31 | mdiv<<16 | pdiv<<8 | sdiv)
+#define PLL_ENABLE	(1  << 31)
+#define SET_PLL(mdiv, pdiv, sdiv)	((mdiv)<<16|(pdiv)<<8|(sdiv))
+#define SET_PLL_ENABLED(m, p, s)	(PLL_ENABLE|SET_PLL(m, p, s))
 
 /* the smartQ works fine at 666MHz */
-/* Pick 1 of these clocks */
+/* Pick 1 of these clocks in config.mk NOT here */
 // #define CONFIG_CLK_666_166_66
 // #define CONFIG_CLK_666_133_66
 // #define CONFIG_CLK_532_133_66
 
 #if defined(CONFIG_CLK_666_166_66) /* FIN 12MHz, Fout 666MHz */
 
-#define APLL_MDIV       333
-#define MPLL_MDIV	      333
+#define APLL_MDIV       0
+// #define APLL_MDIV       333
+#define APLL_PDIV       3
+#define APLL_SDIV       1
+
+#define MPLL_MDIV	0
+// #define MPLL_MDIV	333
+#define MPLL_PDIV       3
+#define MPLL_SDIV	1
+
 #define	Startup_PCLKdiv		4
+
 #undef  CONFIG_SYNC_MODE /* ASYNC MODE */
-// #define CONFIG_SYNC_MODE /* this does not appear to work */
+//  #define CONFIG_SYNC_MODE /* this does not appear to work */
 
 #elif defined(CONFIG_CLK_666_133_66) /* FIN 12MHz, Fout 666MHz */
 
 #define APLL_MDIV       333
-#define MPLL_MDIV	      266
+#define APLL_PDIV       3
+#define APLL_SDIV       1
+
+#define MPLL_MDIV	266
+#define MPLL_PDIV       3
+#define MPLL_SDIV	1
+
 #define	Startup_PCLKdiv		3
 #undef  CONFIG_SYNC_MODE /* ASYNC MODE */
 
 #elif defined(CONFIG_CLK_532_133_66) /* FIN 12MHz, Fout 532MHz */
 
 #define APLL_MDIV       266
-#define MPLL_MDIV	      266
+#define APLL_PDIV       3
+#define APLL_SDIV       1
+
+#define MPLL_MDIV       266
+#define MPLL_PDIV       3
+#define MPLL_SDIV       1
 #define	Startup_PCLKdiv		3
 #define CONFIG_SYNC_MODE
 
@@ -66,14 +88,6 @@
 
 /* input clock of PLL */
 #define CONFIG_SYS_CLK_FREQ     12000000  /* the SmartQ has 12MHz input clock */
-
-
-#define MPLL_PDIV	3
-#define MPLL_SDIV	1
-
-/* for 666MHz/533MHz */
-#define APLL_PDIV       3
-#define APLL_SDIV       1
 
 #define Startup_APLLdiv         0
 #define Startup_HCLKdiv		1
@@ -100,22 +114,24 @@
 #define DMC_OTHERS_SYNCVICPORT  (1<<5)  /* Nice: undocument bits */
 
 #define CLK_DIV_VAL	((Startup_PCLKdiv<<12)|(Startup_HCLKx2div<<9)|(Startup_HCLKdiv<<8)|(Startup_MPLLdiv<<4)|Startup_APLLdiv<<0)
-#define APLL_VAL	set_pll(APLL_MDIV, APLL_PDIV, APLL_SDIV)
-#define MPLL_VAL	set_pll(MPLL_MDIV, MPLL_PDIV, MPLL_SDIV)
 
-#define EPLL_ENABLE	(1  << 31)
-#define EPLL_MDIV	(32 << 16)
+#define APLL_VAL	SET_PLL_ENABLED(APLL_MDIV, APLL_PDIV, APLL_SDIV)
+#define MPLL_VAL	SET_PLL_ENABLED(MPLL_MDIV, MPLL_PDIV, MPLL_SDIV)
 
+#define EPLL_MDIV	32
+
+#define EPLL_24MHZ
 #ifdef EPLL_24MHZ
 /* this is 24MHz for an Fin of 12MHz */
-#define EPLL_PDIV	(2  <<  8)
-#define EPLL_SDIV	(3  <<  0)
-#endif
+#define EPLL_PDIV	2
+#define EPLL_SDIV	3
+#else
 /* this is for 192MHz for Fin of 12MHz */
-#define EPLL_PDIV	(2  <<  8)
-#define EPLL_SDIV	(3  <<  0)
+#define EPLL_PDIV	1
+#define EPLL_SDIV	1
+#endif
 
-#define EPLL_VAL 	(EPLL_ENABLE|EPLL_MDIV|EPLL_PDIV|EPLL_SDIV)
+#define EPLL_VAL 	SET_PLL_ENABLED(EPLL_MDIV, EPLL_PDIV, EPLL_SDIV)
 
 /* These are the fields for the DMC CFG register */
 /* device column pins */
@@ -531,12 +547,11 @@ wait_for_async:
         str     r1, [r0, #OTHERS_OFFSET]
 #endif
 
+        /* set PLL by using Fin  first */
+	ldr	r1, [r0, #CLK_SRC_OFFSET]	/* APLL, MPLL are not used */
+	bic	r1, r1, #0x3
+	str	r1, [r0, #CLK_SRC_OFFSET]
 
-	mov	r1, #0xff00
-	orr	r1, r1, #0xff
-	str	r1, [r0, #APLL_LOCK_OFFSET]
-	str	r1, [r0, #MPLL_LOCK_OFFSET]
-	str	r1, [r0, #EPLL_LOCK_OFFSET]
 /* CLKUART(=66.5Mhz) = CLKUART_input(532/2=266Mhz) / (UART_RATIO(3)+1) */
 /* CLKUART(=50Mhz) = CLKUART_input(400/2=200Mhz) / (UART_RATIO(3)+1) */
 /* Now, When you use UART CLK SRC by EXT_UCLK1, We support 532MHz & 400MHz value */
@@ -555,14 +570,50 @@ wait_for_async:
 	orr	r1, r1, r2
 	str	r1, [r0, #CLK_DIV0_OFFSET]
 
+# start with 266.  Step forward to 333
+# r0 pll base register
+# r1 scratch
+# r2 the current mdiv
+	ldr	r2, =266
+step_pll:
+	mov	r1, #0xff00
+	orr	r1, r1, #0xff
+
+	str	r1, [r0, #APLL_LOCK_OFFSET]
+	str	r1, [r0, #MPLL_LOCK_OFFSET]
+
+
 	ldr	r1, =APLL_VAL
+        orr	r1, r2, LSL #16
 	str	r1, [r0, #APLL_CON_OFFSET]
-	ldr	r1, =MPLL_VAL
 	str	r1, [r0, #MPLL_CON_OFFSET]
+	add	r2, r2, #1
+
+	/* wait at least 100us to stablize all clock */
+	mov	r1, #0x1000
+pll_wait:	
+	subs	r1, r1, #1
+	bne	pll_wait
+
+	ldr	r1, =333
+	cmp	r1, r2
+	blt	step_pll
+
+	mov	r1, #0xff00
+	orr	r1, r1, #0xff
+
+	str	r1, [r0, #EPLL_LOCK_OFFSET]
+
 	ldr	r1, =EPLL_VAL
 	str	r1, [r0, #EPLL_CON0_OFFSET]
 	ldr	r1, =0x0
 	str	r1, [r0, #EPLL_CON1_OFFSET]
+
+	/* wait at least 300us to stablize all clock */
+	mov	r1, #0x20000
+eppl_wait:	
+	subs	r1, r1, #1
+	bne	eppl_wait
 
 	ldr	r1, [r0, #CLK_SRC_OFFSET]	/* APLL, MPLL, EPLL select to Fout */
 
@@ -570,11 +621,6 @@ wait_for_async:
 	orr	r1, r1, r2
 
 	str	r1, [r0, #CLK_SRC_OFFSET]
-
-	/* wait at least 200us to stablize all clock */
-	mov	r1, #0x10000
-3:	subs	r1, r1, #1
-	bne	3b
 
 #ifdef CONFIG_SYNC_MODE                    /* Synchronization for VIC port */
 
