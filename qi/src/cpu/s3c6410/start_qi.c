@@ -27,6 +27,9 @@
 #include <qi.h>
 #include <neo_gta03.h>
 #include <neo_smdk6410.h>
+#ifdef HHTECH_MINIPMP
+#include "../../../../fw-utils/firmware_header.h"
+#endif
 
 #define stringify2(s) stringify1(s)
 #define stringify1(s) #s
@@ -61,8 +64,16 @@ extern int is_jtag;
  * * @param with_init : reinitialize or not
  * * @return bool(unsigend char) - Success or failure.
  * */
-#define CopyMMCtoMem(z,a,b,c,e) (((u8(*)(int, unsigned int, unsigned short, unsigned int*, u8)) \
-	    (*((unsigned int *)0x0C004008)))(z,a,b,c,e))
+typedef int (*CopyFunc)(int, u32, u16, u32*, int);
+
+static inline int CopyMMCtoMem(int chan, u32 startBlkAddr,
+                               u16 nBlks, u32* memPtr, int reinit)
+{
+   CopyFunc rom =  *(CopyFunc *)0x0c004008;
+
+   return rom(chan, startBlkAddr, nBlks, memPtr, reinit);
+}
+
 
 #include <s3c6410.h>
 void led_set(int on);
@@ -133,7 +144,7 @@ void start_qi(void)
 	    if(SDHC) sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1;
 	    else     sd_sectors = globalBlockSizeHide - UBOOT_BLKS - 16 - 1 - 1;
 
-	    flag = (int)CopyMMCtoMem(channel, sd_sectors, UBOOT_BLKS,
+	    flag = CopyMMCtoMem(channel, sd_sectors, UBOOT_BLKS,
 		(u32*)RD_MEM_ADDR, 0);
 	}
 
@@ -211,46 +222,28 @@ void start_qi(void)
 }
 
 #ifdef HHTECH_MINIPMP
-typedef struct _firmware_fileheader {
-    uint32_t magic;        // '2009'
-    uint32_t check_sum; // for 8 ~ .fh_size 
-    uint32_t fh_size;
-    uint32_t version;      // major.minor.revision.xxx, each section in 8-bits
-    uint32_t date;          // seconds since the Epoch
-    char vendor[32];       // XXX: uint32_t vendor_string_len; char vendor_string[] 
-    //uint32_t nand_off_end1=16M/512, nand_off_end2=8M/512;  // offset from INAND END(BLOCKS)
-    uint32_t component_count /* = 4*/;
-    struct {
-	struct {
-	    uint32_t offset, size;
-	} file, nand;
-	uint32_t check_sum;
-    }qi, u_boot, zimage, initramfs, rootfs; // components[];
-}FirmHead;
 
-#define HEAD_MAGIC            0x39000032 // 2009
-#define BLOCK_SIZE            (512)
-#define INAND_KERNEL0_BEND    ((8<<20)/BLOCK_SIZE)   // 8M
-#define INAND_KERNEL1_BEND    ((16<<20)/BLOCK_SIZE)  // 16M
+#define INAND_KERNEL0_BEND    ((8<<20)/NANDBLKSIZE)   // 8M
+#define INAND_KERNEL1_BEND    ((16<<20)/NANDBLKSIZE)  // 16M
 static int do_read_inand(int ch, unsigned long offset_end_blk)
 {
     unsigned long start = 0, cnt = 0;
     int ret = 0;
 
-    FirmHead *fh = (FirmHead*)RD_MEM_ADDR;
+    FWFileHdr *fh = (FWFileHdr*)RD_MEM_ADDR;
     start = globalBlockSizeHide - offset_end_blk;
 
-    ret = (int)CopyMMCtoMem(ch, start, 2, (u32*)fh, 0);
+    ret = CopyMMCtoMem(ch, start, 2, (u32*)fh, 0);
     if(fh->magic != HEAD_MAGIC) {
 	puts("Error magic "); print32(fh->magic);puts("\n");
 	return -1;
     }
 
     start += fh->u_boot.nand.offset;
-    cnt   = (fh->u_boot.nand.size / BLOCK_SIZE) + 1;
+    cnt   = (fh->u_boot.nand.size / NANDBLKSIZE) + 1;
 
 
-    return (int)CopyMMCtoMem(ch, start, cnt, (u32*)fh, 0);
+    return CopyMMCtoMem(ch, start, cnt, (u32*)fh, 0);
 }
 
 int do_load_uboot(void)

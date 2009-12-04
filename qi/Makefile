@@ -17,7 +17,7 @@
 include config.mk
 
 BUILD_DATE := $(shell date +%D-%T)
-BUILD_HOST := $(shell hostname)
+BUILD_HOST := Chronolytics
 #BUILD_BRANCH := $(shell git branch | grep ^\* | cut -d' ' -f2)
 # BUILD_HEAD := $(shell git show --pretty=oneline | head -n1 | cut -d' ' -f1 | cut -b1-16)
 BUILD_BRANCH := smartQ
