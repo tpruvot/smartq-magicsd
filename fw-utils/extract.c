@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <time.h>
+#include <time.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -106,7 +107,8 @@ int extract(char *filename, firmware_fileheader *fw_fh)
 
     fprintf(stderr, "Header:    header size     = %d\n", fw_fh->fh_size);
     fprintf(stderr, "Header:    version         = %d\n", fw_fh->version);
-    fprintf(stderr, "Header:    date	        = %d\n", fw_fh->date);
+    fprintf(stderr, "Header:    date            = %s\n", 
+        ctime((time_t*)&fw_fh->date));
     fprintf(stderr, "Header:    vendor          = %s\n", fw_fh->vendor);
     if(strcmp(fw_fh->vendor, "hhtech")) {
 	fprintf(stderr, "fw_fh->vendor != hhtech\n");
@@ -115,12 +117,12 @@ int extract(char *filename, firmware_fileheader *fw_fh)
     fprintf(stderr, "Header:    component_count = %d\n", fw_fh->component_count);
 
     if (fw_fh->machType == MACH_TYPE_SMARTQ5)
-       fprintf(stderr,"Header:     machType        = SmartQ5\n");
+       fprintf(stderr,"Header:    machType        = SmartQ5\n");
     else
     if (fw_fh->machType == MACH_TYPE_SMARTQ7)
-       fprintf(stderr,"Header:     machType        = SmartQ7\n");
+       fprintf(stderr,"Header:    machType        = SmartQ7\n");
     else
-       fprintf(stderr,"Header:     machType        = %d\n", fw_fh->machType);
+       fprintf(stderr,"Header:    machType        = %d\n", fw_fh->machType);
 
     for (i = QI ; i < fw_fh->component_count ; i++) {
         stp = (struct stanza *) ((void*) fw_fh + sects[i].stanzaOffset);

@@ -117,10 +117,9 @@ font_type font_0612 = {S0612, 8, 16};
 #define FB_LOGO_HEIGHT            100
 #define FB_BYTES_OF_LOGO        (FB_WIDTH * FB_LOGO_HEIGHT * FB_BYTES_PER_PIXEL)
 
-#define EXT3_HOME_SECTORS        (128 * 1024 * 2)    // 256MB
-#define EXT3_SWAP_SECTORS        (128 * 1024 * 2)    // 128MB
-#define EXT3_ZIMAGE_INITRAMFS_SECTORS    (16 * 1024 * 2)        // 16MB
-#define RESERVED_SECTORS        (4 * 1024 * 2)        // 4MB
+#define HOME_SECTORS        (128 * 1024 * 2)    // 128MB
+#define SWAP_SECTORS        (128 * 1024 * 2)    // 128MB
+#define ZIMAGE_INITRAMFS_SECTORS    (16 * 1024 * 2)        // 16MB
 #define INAND_BLOCK_SIZE        512            // 512B
 
 static screen_buffer *sb = NULL;
@@ -329,23 +328,35 @@ int loading_fs(char *name_zh, char *name_en, uint32_t total_size, RGBLCD *bar_co
     int fd[2];
     pid_t pid;
     char sniffer[2];
-    const char lzma[] = { 0x37, 0xfd };
-    const char gzip[] = { 0x8b, 0x1f };
+    static const char lzma[] = { 0xfd, 0x37 };
+    static const char gzip[] = { 0x1f, 0x8b };
     /* assume gzip */
-    char *untar = "/usr/bin/tar zxf - -C /mnt/upgrade";
+    static char *untar = "/usr/bin/tar zxf - -C /mnt/upgrade";
     struct timeval tpStart, tpEnd;
     float timeUse;
 
     size = 0;
     remnant_size = total_size;
 
-    read(fd_sd, sniffer, 2);
+    read(fd_sd, sniffer, sizeof(sniffer));
 
-    lseek(fd_sd, -2, SEEK_CUR); /* status quo ante */
+    lseek(fd_sd, -sizeof(sniffer), SEEK_CUR); /* status quo ante */
 
-    if (memcmp(sniffer, lzma, sizeof(lzma) == 0))
+    fprintf(stdout, "sniffer found: 0x%x 0x%x\n", sniffer[0], sniffer[1]);
+
+    if ((sniffer[0] == lzma[0]) && (sniffer[1] == lzma[1]))
     {
-       char *untar = "/usr/bin/tar Jxf - -C /mnt/upgrade";
+       untar = "/usr/bin/tar Jxf - -C /mnt/upgrade";
+       fprintf(stdout, "sniffer found lzma archive.\n");
+    }
+    else
+    if ((sniffer[0] == gzip[0]) && (sniffer[1] == gzip[1]))
+    {
+       fprintf(stdout, "sniffer found gzip archive.\n");
+    }
+    else {
+       fprintf(stdout, "sniffer found unrecognized archive.\n");
+       return -1;
     }
 
     gettimeofday(&tpStart, NULL);
@@ -473,10 +484,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
 
     /* write the firmware_fileheader into the inand */
     lseek(fd_sd, 0, SEEK_SET);
-    lseek(fd_inand, -EXT3_ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, -ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ",  fw_fh->fh_size, bar_color, trim_color);
     /* calculate the checksum of firmware_fileheader1 */
-    lseek(fd_inand, -EXT3_ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE + 8, SEEK_END);
+    lseek(fd_inand, -ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE + 8, SEEK_END);
     inand_check_sum = get_check_sum(fw_fh->fh_size - 8);
     if(inand_check_sum != fw_fh->check_sum) { 
         sprintf(err, "file header1 xsum fail: expected %d calc'ed %d", 
@@ -492,10 +503,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
     
     /* write the u-boot into the inand */
     lseek(fd_sd, (fw_fh->u_boot).file.offset, SEEK_SET);
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->u_boot).file.size, bar_color, trim_color);
     /* calculate the checksum of u-boot1 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->u_boot).file.size);
     if(inand_check_sum != (fw_fh->u_boot).check_sum) { 
         sprintf(err, "u_boot1 xsum fail: expected %d calc'ed %d", 
@@ -510,10 +521,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
    
     /* write the zimage into the inand */
     lseek(fd_sd, (fw_fh->zimage).file.offset, SEEK_SET);
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->zimage).file.size, bar_color, trim_color);
     /* calculate the checksum of zimage1 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->zimage).file.size);
     if(inand_check_sum != (fw_fh->zimage).check_sum) { 
         sprintf(err, "zimage1 xsum fail: expected %d calc'ed %d", 
@@ -526,10 +537,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
     }
     
     /* write the initramfs into the inand */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->initramfs).file.size, bar_color, trim_color);
     /* calculate the checksum of initramfs1 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->initramfs).file.size);
     if(inand_check_sum != (fw_fh->initramfs).check_sum) { 
         sprintf(err, "initramfs1 xsum fail: expected %d calc'ed %d", 
@@ -542,10 +553,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
     
     /* write the firmware_fileheader backup into the inand */
     lseek(fd_sd, 0, SEEK_SET);
-    lseek(fd_inand, -EXT3_ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE / 2, SEEK_END);
+    lseek(fd_inand, -ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE / 2, SEEK_END);
     loading("正在升级... ", "Upgrading... ", fw_fh->fh_size, bar_color, trim_color);
     /* calculate the checksum of firmware_fileheader2 */
-    lseek(fd_inand, -EXT3_ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE / 2 + 8, SEEK_END);
+    lseek(fd_inand, -ZIMAGE_INITRAMFS_SECTORS * INAND_BLOCK_SIZE / 2 + 8, SEEK_END);
     inand_check_sum = get_check_sum(fw_fh->fh_size - 8);
     if(inand_check_sum != fw_fh->check_sum) { 
         sprintf(err, "file header2 xsum fail: expected %d calc'ed %d", 
@@ -558,10 +569,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
 
     /* write the u-boot backup into the inand */
     lseek(fd_sd, (fw_fh->u_boot).file.offset, SEEK_SET);
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->u_boot).file.size, bar_color, trim_color);
     /* calculate the checksum of u-boot2 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->u_boot).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->u_boot).file.size);
     if(inand_check_sum != (fw_fh->u_boot).check_sum) { 
         sprintf(err, "u_boot2 xsum fail: expected %d calc'ed %d", 
@@ -575,10 +586,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
 
     /* write the zimage backup into the inand */
     lseek(fd_sd, (fw_fh->zimage).file.offset, SEEK_SET);
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->zimage).file.size, bar_color, trim_color);
     /* calculate the checksum of zimage2 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->zimage).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->zimage).file.size);
     if(inand_check_sum != (fw_fh->zimage).check_sum) { 
         sprintf(err, "zimage2 xsum fail: expected %d calc'ed %d", 
@@ -590,10 +601,10 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
     }
     
     /* write the initramfs backup into the inand */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     loading("正在升级... ", "Upgrading... ", (fw_fh->initramfs).file.size, bar_color, trim_color);
     /* calculate the checksum of initramfs2 */
-    lseek(fd_inand, (-EXT3_ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
+    lseek(fd_inand, (-ZIMAGE_INITRAMFS_SECTORS / 2 + (fw_fh->initramfs).nand.offset) * INAND_BLOCK_SIZE, SEEK_END);
     inand_check_sum = get_check_sum((fw_fh->initramfs).file.size);
     if(inand_check_sum != (fw_fh->initramfs).check_sum) { 
         sprintf(err, "initramfs2 xsum fail: expected %d calc'ed %d", 
@@ -672,25 +683,26 @@ static int loading_firmware(char *inand_device, RGBLCD *bar_color, RGBLCD *trim_
 int partition_inand(char *devName, long sectors)
 {
     char system_cmd[512];
+    int ret;
 
     static char fdisk_cmd[] = 
-       "fdisk %s << __EOF > /dev/null\n"
+       "fdisk %s << __EOF\n"
        "o\n"    // make new partition table
        "n\n"    // new root partition
        "p\n"
        "1\n"    // partition 1
        "1\n"    // starting cyl
-       "+%dM\n" // extent in MB
+       "+%dK\n" // extent in KB
        "n\n"    // new home partition
        "p\n"
        "2\n"    // partition 2
        "\n"     // default end of last partition
-       "+%dM\n" // extent in MB
+       "+%dK\n" // extent in KB
        "n\n"    // new swap partition
        "p\n"
        "3\n"    // partition 3
        "\n"     // default end of last partition
-       "+%dM\n" // extent in MB
+       "+%dK\n" // extent in KB
        "w\n"
        "q\n"
        "__EOF\n";  // end of file marking for "<<" operator
@@ -698,12 +710,15 @@ int partition_inand(char *devName, long sectors)
     /* calculate the sizes of three partitions */
     umount("/mnt/mmcblk0p1/"); // hardcoded: dumb
     sprintf(system_cmd, fdisk_cmd, devName, 
-       (sectors - EXT3_HOME_SECTORS - EXT3_SWAP_SECTORS - 
-        EXT3_ZIMAGE_INITRAMFS_SECTORS) / NANDBLKSZ,
-        EXT3_HOME_SECTORS / NANDBLKSZ,
-        EXT3_SWAP_SECTORS / NANDBLKSZ);
+       (sectors - (HOME_SECTORS + SWAP_SECTORS + ZIMAGE_INITRAMFS_SECTORS))/ 2,
+        HOME_SECTORS / 2,
+        SWAP_SECTORS / 2);
     system(system_cmd);
-    fprintf(stderr, "fdisk success\n");
+    ret = WEXITSTATUS(system(system_cmd));
+    if (ret) 
+           fprintf(stderr,"ERROR: fdisk fails\n");
+       else
+           fprintf(stderr, "fdisk success\n");
 
     // create /dev/mmcblk0/1/2
     sleep(5);

@@ -31,7 +31,8 @@ enum sections {
     MAX_SECTIONS,
 };
 
-#define NANDBLKSZ            (2048)
+#define HEAD_MAGIC          0x39000032 // 2009
+#define NANDBLKSIZE         (512)
 
 /* see linux/include/asm-xxx/mach-types.h */
 #define MACH_TYPE_SMARTQ5              2534
