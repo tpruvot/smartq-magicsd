@@ -35,12 +35,12 @@
 #define SET_PLL_ENABLED(m, p, s)	(PLL_ENABLE|SET_PLL(m, p, s))
 
 #undef  CONFIG_SYNC_MODE /* ASYNC MODE */
-/* the smartQ DOES NOT WORK at 666MHz */
-/* this appears to be a Samsung errata liggtly disclosed in:  */
+/* the smartQ DOES NOT WORK at APLL = MPLL = 666MHz */
+/* this appears to be a Samsung errata lightly disclosed in:  */
 /* "6410X Power Design Giode Preliminary Rev 0.9A" */
 /* "October 7, 2009 */
 /* Pick 1 of these clocks in config.mk NOT here */
-// #define CONFIG_CLK_800_160_40
+// #define CONFIG_CLK_800_166_55
 // #define CONFIG_CLK_800_133_66
 // #define CONFIG_CLK_666_166_66
 // #define CONFIG_CLK_666_166_66_SYNC
