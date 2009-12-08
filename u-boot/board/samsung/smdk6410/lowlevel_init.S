@@ -90,7 +90,8 @@ lowlevel_init:
 	ldr	r2, _TEXT_BASE		/* r1 <- original base addr in ram */
 	bic	r2, r2, r0		/* r0 <- current base addr of code */
 	cmp 	r1, r2			/* compare r0, r1                  */
-	beq	no_system_clock_init	/* r0 == r1 then skip clocks init   */
+	beq	qi_did_init	/* r0 == r1 then skip  init   */
+// 	beq	no_system_clock_init	/* r0 == r1 then skip clocks init   */
 	bl system_clock_init
 
 no_system_clock_init:
@@ -128,6 +129,7 @@ no_dram_init:
 	ldr	r1, =0x4b4b4b4b
 	str	r1, [r0, #UTXH_OFFSET]
 
+qi_did_init:
 	mov	lr, r12
 	mov	pc, lr
 #if 1

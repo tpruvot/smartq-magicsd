@@ -239,7 +239,7 @@ static int do_firmware_error(int flag, int param)
 #define  HEAD_MAGIC     0x39000032 // 2009
 
 /* hardcoded pro-tem */
-#include "/usr/src/smartQ/smartq-initramfs/fw-utils/firmware_header.h"
+#include "../../../../fw-utils/firmware_header.h"
 
 extern block_dev_desc_t * mmc_get_dev(int dev);
 extern void mmc_release_dev(int dev);
@@ -261,6 +261,14 @@ static int do_read_inand(int dev, ulong offset_end_inand, int flag)
 	printf("magic error:0x%x\n", fh->magic);
 	return -2;
     }
+    /* set the current platform based on the inand fileheader */
+    if (fh->machType == 0)  /* older software */
+      fh->machType = MACH_TYPE_SMDK6410;
+    else
+      machType = fh->machType; /* make a file-local copy */
+
+    if (fh->machType == MACH_TYPE_SMARTQ5)
+      firmware = Q5;
 
     // kernel
     blk_addr = desc->lba - offset_end_inand + fh->zimage.nand.offset;
@@ -300,9 +308,6 @@ static int do_readsd_upgrade(int dev, char *file)
       fh->machType = MACH_TYPE_SMDK6410;
     else
       machType = fh->machType; /* make a file-local copy */
-
-    if (fh->machType == MACH_TYPE_SMARTQ5)
-      firmware = Q5;
 
     if(fh->initramfs.file.offset > fh->zimage.file.offset) 
 	size = fh->initramfs.file.offset + fh->initramfs.file.size;
