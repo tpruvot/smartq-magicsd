@@ -1,7 +1,7 @@
 
-These files are the initramfs that the SmartQ devices uses as an alternate
-boot to run the installer.  It could be used for other purposes such as an
-altboot capability, etc.
+These files were the initramfs that the SmartQ devices used as an alternate
+boot to run the installer.  It can be used for other purposes such as an
+altboot capability, etc.... so lets go' :) (tanguy)
 
 --dfc  
 David F. Carlson    Chronolytics, Inc.  Rochester, NY

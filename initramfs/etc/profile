@@ -1,5 +1,0 @@
-
-export DISPLAY=:0.0
-export PATH=/usr/X11/bin:$PATH
-#export LD_LIBRARY_PATH=/usr/X11/lib:$LD_LIBRARY_PATH
-

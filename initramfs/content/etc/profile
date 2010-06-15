@@ -1,0 +1,18 @@
+echo
+echo Type 'help' to see available scripts
+
+alias l='ls $LS_OPTIONS -lA'
+
+# some more ls aliases
+alias ll='ls -alF'
+alias la='ls -A'
+
+alias cd..="cd .."
+alias ports='netstat -lnp | grep -v 127.0.0.1'
+alias tracert='traceroute'
+alias patchdiff='patch -p0 < '
+
+alias tarx='tar -xpvf'
+alias tarj='tar -xpjvf'
+
+alias findinfiles='find . -print -type f 2>/dev/null | grep -v "\.svn/" | xargs grep -insI '

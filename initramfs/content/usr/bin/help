@@ -1,0 +1,11 @@
+#!/bin/sh
+
+echo "SmartQ Magic SDCard v1.0 - 14 June 2010"
+echo
+echo NAND and SDCard Partitions are automatically mounted on startup in /mnt
+echo
+echo "Available Scripts :"
+echo "  backup.sh	: Backup Primary Partition of NAND to /sdcard/dump0p1.img"
+echo "  restore.sh	: Restore a dump file to the primary NAND partition"
+echo "  keyb.sh		: Change Keyboard charmap (need file in /etc/console/xx.kmap)"
+echo "  pl2501.sh	: Load Host-to-Host Prolific USB device driver (need a special cable)"

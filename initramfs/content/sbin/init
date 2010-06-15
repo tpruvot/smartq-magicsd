@@ -1,0 +1,88 @@
+#!/bin/ash
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
+HOME=/root
+
+LD_LIBRARY_PATH=/lib:/usr/lib:/bin
+TMP=/tmp
+HISTFILE=/tmp/.history
+
+export LD_LIBRARY_PATH HISTFILE TMP
+
+#path and home need to be fixed (busybox?)
+export PATH HOME
+
+clear
+
+fail() {
+	errlog=/mnt/mmcblk1p1/lasterror.txt
+
+	[ -d //mnt/mmcblk1p1 ] || (mkdir /mnt/mmcblk1p1 && mount -t vfat -o remount,rw /dev/mmcblk1p1 /mnt/mmcblk1p1)
+
+	/bin/echo "Failed: $1" > $errlog
+	dmesg >> $errlog
+
+	exec /bin/ash
+}
+
+mount -t proc  proc /proc -o noexec,nosuid,nodev
+mount -t sysfs sysfs /sys -o noexec,nosuid,nodev
+mount -t ramfs none /dev  -o exec,nosuid,mode=0755
+
+mkdir -p /dev/pts /dev/shm /dev/input /mnt/disk
+mount -t devpts devpts /dev/pts -o noexec,nosuid
+
+echo 0 > /sys/devices/platform/hhtech_gpio/led1_en
+
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+mdev -s
+
+modprobe fbcon
+[ $? -eq 0 ] || fail "Failed to modprobe fbcon. Cannot continue. $?"
+
+fv /usr/magic.jpg &
+
+#turn on lcd enable fb console and usb keyboard
+echo 50 > /sys/devices/platform/s3c2410-lcd/backlight_level
+modprobe ohci_hcd &
+modprobe usbhid &
+
+#Load MMC SDCard Driver Module if Present
+MOD_DIR=/lib/modules/`/bin/uname -r`
+if [ -f $MOD_DIR/kernel/drivers/mmc/host/s3c-hsmmc.ko ] ; then
+	modprobe s3c-hsmmc
+	modprobe mmc_block
+	usleep 500000
+else
+	#let the time to the logo to be paint
+	usleep 300000
+fi
+
+#NumLock ON
+for tty in /dev/tty[1-8]
+do
+    setleds -D +num < $tty > /dev/null
+    echo "Console $tty - Press  Alt+Fn to switch" > $tty &
+done
+
+#mount -t vfat -o remount,rw /dev/mmcblk1p1 /mnt/mmcblk1p1
+ln -s /mnt/mmcblk1p1 /sdcard
+
+#dmesg dump to sdcard...
+dmesg > /sdcard/dmesg.txt
+
+sync
+
+if [ -x /sdcard/runme.sh ]
+then
+   getty -n -i -l /sdcard/runme.sh 115200 tty1
+else
+   echo "no ./runme.sh script on SDCard"
+fi
+
+echo "SmartQ Magic SDCard" > /dev/tty &
+echo "more tools will come...         http://tanguy.ath.cx - June 2010" > /dev/tty &
+
+echo 0 > /sys/devices/platform/hhtech_gpio/led2_en
+
+exec /bin/busybox init
