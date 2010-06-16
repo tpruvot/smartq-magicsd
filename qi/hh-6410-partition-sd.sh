@@ -16,6 +16,8 @@ QI_ALLOCATION=$(( 256 * 2 ))
 
 # ----------------------
 
+BOOT_ONLY="1"
+
 echo "s3c6410 bootable SD partitioning utility"
 echo "(C) Openmoko, Inc  Andy Green <andy@openmoko.com>"
 echo
@@ -61,6 +63,9 @@ case "$(lsb_release --short --description)" in
   Ubuntu\ 8.04*)
     CUT_COLUMN=5
     ;;
+  Ubuntu\ 10.*)
+    CUT_COLUMN=5
+    ;;
   Debian\ GNU/Linux*)
     CUT_COLUMN=8
     ;;
@@ -69,7 +74,7 @@ case "$(lsb_release --short --description)" in
     ;;
 esac
 
-DMESG_LINE=$(dmesg | grep "$1" | grep "512-byte hardware" | tail -n 1)
+DMESG_LINE=$(dmesg | grep "$1" | grep -E "512-byte (hardware|logical)" | tail -n 1)
 SECTORS=$(echo "${DMESG_LINE}" | cut -d' ' -f"${CUT_COLUMN}")
 SECTORS=$(echo "${DMESG_LINE}" | cut -d] -f3 |cut -d' ' -f2)
 
@@ -129,6 +134,12 @@ if [ ! -z "$5" ] ; then
   echo "w" >>$FDISK_SCRIPT
   echo "q" >>$FDISK_SCRIPT
 
+
+  if [ "$(BOOT_ONLY)" != "1" ] ; then
+
+  echo formating...
+  pause
+
   # do the partitioning action
   fdisk /dev/$1 <$FDISK_SCRIPT
 
@@ -137,6 +148,12 @@ if [ ! -z "$5" ] ; then
   mkfs.vfat "/dev/$1"1 -n main-vfat
   mkfs.ext3 "/dev/$1"2 -L rootfs
   mkfs.ext3 "/dev/$1"3 -L backupfs
+
+  else
+
+  echo "format partitions skipped... edit the BOOT_ONLY variable"
+
+  fi
 
 fi # if -z $4
 
