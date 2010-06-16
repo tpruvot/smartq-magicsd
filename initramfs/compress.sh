@@ -7,6 +7,8 @@ SDPART=/media/2B3F-7268
 
 #kernel to use
 ZIMAGE=./zImageMer
+##ZIMAGE=./zImage2631q
+#ZIMAGE=./zImage34
 
 rm initrd.igz
 
@@ -14,7 +16,9 @@ rm initrd.igz
 
 mkimage -d tmp.gz -A ARM -O Linux -C gzip -T RAMDisk -n "SmartQ initramfs" initrd.igz
 
-../fw-utils/mkSmartQ5 qi.nb0 u-boot.bin $ZIMAGE initrd.igz
+#../fw-utils/mkSmartQ5 qi.nb0 u-boot.bin $ZIMAGE initrd.igz
+
+../fw-utils/mkSmartQ5 qi.nb0 no-u-boot.bin $ZIMAGE initrd.igz
 
 rm $SDPART/SmartQ5
 cp SmartQ5 $SDPART/
