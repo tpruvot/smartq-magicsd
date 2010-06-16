@@ -2338,7 +2338,8 @@ clean:
 		-o -name '*~' -o -name '.depend*' \
 		-o -name '*.o'  -o -name '*.a'  \) -print \
 		| xargs rm -f
-	rm -f u-boot*
+	#keep u-boot.bin image only (for initramfs symlink)
+	rm -f u-boot.map u-boot.dis # u-boot
 	rm -f $(obj)examples/hello_world $(obj)examples/timer \
 	      $(obj)examples/eepro100_eeprom $(obj)examples/sched \
 	      $(obj)examples/mem_to_mem_idma2intr $(obj)examples/82559_eeprom \
@@ -2378,6 +2379,7 @@ else
 mrproper \
 distclean:	clobber unconfig
 	rm -rf $(OBJTREE)/*
+	rm -f u-boot*
 endif
 
 backup:

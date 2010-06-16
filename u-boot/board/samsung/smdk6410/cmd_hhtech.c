@@ -925,7 +925,7 @@ static int boot_image(u32 addr, u32 addr2)
 #ifdef DEBUG
 	set_led(3);
 #endif
-	set_lcd_backlight(0);	// turn off the LCD backlight
+	//set_lcd_backlight(0);	// turn off the LCD backlight
 	if(key_factory)
 	    setenv("bootargs", "console=ttySAC0,115200n8 root=/dev/mmcblk0p1 rootwait splash factory");
 	else
@@ -935,7 +935,7 @@ static int boot_image(u32 addr, u32 addr2)
 	if(addr2) {
 	    argc += 1;
 	    sprintf(cmd_argv[2], "0x%x", addr2);
-	    setenv("bootargs", "console=ttySAC0,115200n8 rdinit=/sbin/init");
+	    setenv("bootargs", "console=tty0 nosplash rdinit=/sbin/init");
 	}
 
 #ifdef CONFIG_SUPPORT_VFAT
