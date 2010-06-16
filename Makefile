@@ -18,3 +18,7 @@ initramfs.gz:	initramfs/content/bin/upgrade
 %.igz:	%.gz
 	mkimage -d $^ $(MKIMAGE_ARGS) $@
 
+boot_sd:
+	qi/format-sd.sh sdb sd qi/qi.nb0.smartQ5 u-boot/u-boot.bin.smartQ5
+boot_sdhc:
+	qi/format-sd.sh sdb sdhc qi/qi.nb0.smartQ5 u-boot/u-boot.bin.smartQ5

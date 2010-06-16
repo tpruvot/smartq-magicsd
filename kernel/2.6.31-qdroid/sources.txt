@@ -1,0 +1,5 @@
+Got from git://gitorious.org/qdroid/qdorid-kernel-2-6-31.git 
+ 
+         http://gitorious.org/qdroid/qdorid-kernel-2-6-31
+
+Status : Booting, display kernel messages in debug Mode (but no usb)
