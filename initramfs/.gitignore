@@ -1,3 +1,9 @@
+SmartQ5
 tmp.gz
 zImage*
-zimage
+zimage*
+homefs.tar.gz
+initrd.igz
+qi.nb0
+rootfs.tar.gz
+

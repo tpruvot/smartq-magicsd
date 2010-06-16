@@ -21,7 +21,7 @@ echo 99 > $LCD_LEVEL
 
 mkdir $SDCARD
 mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD
-if [ -d $SDCARD/bin ] ; then
+if [ -d $SDCARD/boot ] ; then
 	errlog=$SDCARD/dmesg_1.txt
 	dmesg > $errlog
 fi
@@ -71,7 +71,7 @@ echo 50 > $LCD_LEVEL
 #2.6.24
 modprobe ohci_hcd &
 #qdroid
-modprobe ohci-hcd.ko & #or s3c_otg_hcd
+modprobe ohci-hcd & #or s3c_otg_hcd
 
 modprobe usbhid &
 
@@ -87,7 +87,7 @@ fi
 
 mkdir /mnt/mmcblk1p1 
 mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD
-if [ -d $SDCARD/bin ] ; then
+if [ -d $SDCARD/boot ] ; then
         errlog=$SDCARD/dmesg_2.txt
         dmesg > $errlog
 fi
