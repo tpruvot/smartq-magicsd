@@ -1,23 +1,39 @@
 #!/bin/ash
 
+#environment
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 HOME=/root
-
 LD_LIBRARY_PATH=/lib:/usr/lib:/bin
 TMP=/tmp
 HISTFILE=/tmp/.history
-
 export LD_LIBRARY_PATH HISTFILE TMP
-
 #path and home need to be fixed (busybox?)
 export PATH HOME
 
-clear
+#variables
+MOD_DIR=/lib/modules/`/bin/uname -r`
+SDCARD=/mnt/mmcblk1p1
+LCD_LEVEL=/sys/devices/platform/s3c2410-lcd/backlight_level
+LED_1=/sys/devices/platform/hhtech_gpio/led1_en
+LED_2=/sys/devices/platform/hhtech_gpio/led2_en
+
+echo 99 > $LCD_LEVEL
+
+mkdir $SDCARD
+mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD
+if [ -d $SDCARD/bin ] ; then
+	errlog=$SDCARD/dmesg_1.txt
+	dmesg > $errlog
+fi
 
 fail() {
-	errlog=/mnt/mmcblk1p1/lasterror.txt
+	#orange (warning)
+	echo 1 > $LED_1
+	echo 1 > $LED_2
 
-	[ -d //mnt/mmcblk1p1 ] || (mkdir /mnt/mmcblk1p1 && mount -t vfat -o remount,rw /dev/mmcblk1p1 /mnt/mmcblk1p1)
+	errlog=$SDCARD/dmesg_error.txt
+
+	[ -d $SDCARD ] || (mkdir $SDCARD && mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD)
 
 	/bin/echo "Failed: $1" > $errlog
 	dmesg >> $errlog
@@ -32,23 +48,34 @@ mount -t ramfs none /dev  -o exec,nosuid,mode=0755
 mkdir -p /dev/pts /dev/shm /dev/input /mnt/disk
 mount -t devpts devpts /dev/pts -o noexec,nosuid
 
-echo 0 > /sys/devices/platform/hhtech_gpio/led1_en
+echo 0 > $LED_1
 
 echo /sbin/mdev > /proc/sys/kernel/hotplug
 mdev -s
 
-modprobe fbcon
-[ $? -eq 0 ] || fail "Failed to modprobe fbcon. Cannot continue. $?"
+if [ -f $MOD_DIR/kernel/drivers/video/host/s3c-fb.ko ] ; then
+	modprobe s3c-fb
+	[ $? -eq 0 ] || fail "Failed to modprobe s3c-fb. Cannot continue. $?"
+fi
+if [ -f $MOD_DIR/kernel/drivers/video/console/fbcon.ko ] ; then
+	modprobe fbcon
+	[ $? -eq 0 ] || fail "Failed to modprobe fbcon. Cannot continue. $?"
+fi
 
+#clear
 fv /usr/magic.jpg &
 
 #turn on lcd enable fb console and usb keyboard
-echo 50 > /sys/devices/platform/s3c2410-lcd/backlight_level
+echo 50 > $LCD_LEVEL
+
+#2.6.24
 modprobe ohci_hcd &
+#qdroid
+modprobe ohci-hcd.ko & #or s3c_otg_hcd
+
 modprobe usbhid &
 
 #Load MMC SDCard Driver Module if Present
-MOD_DIR=/lib/modules/`/bin/uname -r`
 if [ -f $MOD_DIR/kernel/drivers/mmc/host/s3c-hsmmc.ko ] ; then
 	modprobe s3c-hsmmc
 	modprobe mmc_block
@@ -58,6 +85,14 @@ else
 	usleep 300000
 fi
 
+mkdir /mnt/mmcblk1p1 
+mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD
+if [ -d $SDCARD/bin ] ; then
+        errlog=$SDCARD/dmesg_2.txt
+        dmesg > $errlog
+fi
+
+
 #NumLock ON
 for tty in /dev/tty[1-8]
 do
@@ -66,10 +101,12 @@ do
 done
 
 #mount -t vfat -o remount,rw /dev/mmcblk1p1 /mnt/mmcblk1p1
-ln -s /mnt/mmcblk1p1 /sdcard
+ln -s $SDCARD /sdcard
 
 #dmesg dump to sdcard...
-dmesg > /sdcard/dmesg.txt
+#if [ "`uname -r`" != "2.6.24.7-boot" ] ; then
+	dmesg > /sdcard/dmesg`/bin/uname -r`.txt
+#fi
 
 sync
 
@@ -80,9 +117,9 @@ else
    echo "no ./runme.sh script on SDCard"
 fi
 
-echo "SmartQ Magic SDCard" > /dev/tty &
-echo "more tools will come...         http://tanguy.ath.cx - June 2010" > /dev/tty &
+echo "SmartQ Magic SDCard
+more tools will come...         http://tanguy.ath.cx - June 2010" > /dev/tty1 &
 
-echo 0 > /sys/devices/platform/hhtech_gpio/led2_en
+echo 0 > $LED_2
 
 exec /bin/busybox init

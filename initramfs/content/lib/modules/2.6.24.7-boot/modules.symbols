@@ -225,7 +225,6 @@ alias symbol:cn_add_callback cn
 alias symbol:__ieee80211_rx mac80211
 alias symbol:xt_find_table_lock x_tables
 alias symbol:xt_unregister_table x_tables
-alias symbol:fbcon_set_bitops bitblit
 alias symbol:xdr_encode_array2 sunrpc
 alias symbol:crc_ccitt_table crc_ccitt
 alias symbol:nlmclnt_proc lockd
@@ -411,7 +410,6 @@ alias symbol:usbnet_set_settings usbnet
 alias symbol:libertas_prepare_and_send_command libertas
 alias symbol:power_supply_unregister power_supply
 alias symbol:libertas_reset_device libertas
-alias symbol:fbcon_set_tileops tileblit
 alias symbol:scsi_get_sense_info_fld scsi_mod
 alias symbol:zlib_deflateReset zlib_deflate
 alias symbol:scsi_kunmap_atomic_sg scsi_mod
@@ -471,7 +469,6 @@ alias symbol:svc_create sunrpc
 alias symbol:ieee80211_alloc_hw mac80211
 alias symbol:lro_vlan_hwaccel_receive_skb inet_lro
 alias symbol:zlib_inflate_blob zlib_inflate
-alias symbol:find_font font
 alias symbol:rpc_wake_up_task sunrpc
 alias symbol:phy_start libphy
 alias symbol:rpc_clone_client sunrpc
@@ -553,7 +550,6 @@ alias symbol:read_bytes_from_xdr_buf sunrpc
 alias symbol:xt_register_matches x_tables
 alias symbol:zlib_inflateReset zlib_inflate
 alias symbol:raid_component_add raid_class
-alias symbol:soft_cursor softcursor
 alias symbol:svc_addsock sunrpc
 alias symbol:config_group_find_item configfs
 alias symbol:set_dvfs_step s3c64xx_dvfs
@@ -571,7 +567,6 @@ alias symbol:ieee80211_rate_control_unregister mac80211
 alias symbol:display_device_unregister display
 alias symbol:crypto_tfm_in_queue crypto_algapi
 alias symbol:backlight_device_unregister backlight
-alias symbol:get_default_font font
 alias symbol:xprt_update_rtt sunrpc
 alias symbol:bt_accept_enqueue bluetooth
 alias symbol:hidinput_report_event hid
