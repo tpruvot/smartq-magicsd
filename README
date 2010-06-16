@@ -1,7 +1,11 @@
+SmartQ Magic SD Builder SDK
+http://tanguy.ath.cx/SmartQ5
 
 These files were the initramfs that the SmartQ devices used as an alternate
 boot to run the installer.  It can be used for other purposes such as an
-altboot capability, etc.... so lets go' :) (tanguy)
+altboot capability, etc.... 
+
+...so lets go' :) (Tanguy)
 
 --dfc  
 David F. Carlson    Chronolytics, Inc.  Rochester, NY

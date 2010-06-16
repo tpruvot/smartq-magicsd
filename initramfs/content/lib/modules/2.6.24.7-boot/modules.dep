@@ -35,6 +35,7 @@ kernel/drivers/leds/ledtrig-heartbeat.ko:
 kernel/drivers/bluetooth/btusb.ko: kernel/net/bluetooth/bluetooth.ko
 kernel/drivers/usb/class/cdc-acm.ko:
 kernel/drivers/usb/host/s3c-otg/s3c_otg_hcd.ko:
+kernel/drivers/usb/host/ehci-hcd.ko:
 kernel/drivers/usb/host/ohci-hcd.ko:
 kernel/drivers/usb/storage/usb-storage.ko: kernel/drivers/scsi/scsi_mod.ko
 kernel/drivers/usb/gadget/g_file_storage.ko: kernel/drivers/usb/gadget/s3c-udc-otg-hs.ko

@@ -2,6 +2,7 @@
 # 6410 SD Boot formatter
 # (C) 2008 Openmoko, Inc
 # Author: Andy Green <andy@openmoko.com>
+# Updated by Tanguy Pruvot 2010 <http://tanguy.ath.cx>
 
 # LAYOUT
 # Partition table, then
@@ -18,7 +19,7 @@ QI_ALLOCATION=$(( 256 * 2 ))
 BOOT_ONLY="0"
 SD="$1"
 
-echo "s3c6410 bootable SD partitioning utility"
+echo "SmartQ s3c6410 bootable SD partitioning utility"
 echo "(C) Openmoko, Inc  Andy Green <andy@openmoko.com>"
 echo
 
@@ -83,7 +84,7 @@ case "$OS_NAME" in
     SECTORS=$(( $BYTES / 512 ))
     ;;
   *)
-    CUT_COLUMN=4
+    CUT_COLUMN=5
     ;;
 esac
 

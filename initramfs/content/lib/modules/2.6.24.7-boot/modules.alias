@@ -53,6 +53,7 @@ alias usb:v079Bp000Fd*dc*dsc*dp*ic*isc*ip* cdc_acm
 alias usb:v0482p0203d*dc*dsc*dp*ic*isc*ip* cdc_acm
 alias usb:v0E8Dp0003d*dc*dsc*dp*ic*isc*ip* cdc_acm
 alias usb:v0870p0001d*dc*dsc*dp*ic*isc*ip* cdc_acm
+alias pci:v*d*sv*sd*bc0Csc03i20* ehci_hcd
 alias pci:v*d*sv*sd*bc0Csc03i10* ohci_hcd
 alias usb:v0930p1302d*dc*dsc*dp*ic*isc*ip* option
 alias usb:v1DA5p4515d*dc*dsc*dp*ic*isc*ip* option
