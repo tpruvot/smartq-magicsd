@@ -7,9 +7,8 @@ SDPART=/media/2B3F-7268
 
 #kernel to use
 ZIMAGE=./zImageMer
-ZIMAGE=./zImage2631q
-#ZIMAGE=./zImage34
-#ZIMAGE=./zImage2635
+#ZIMAGE=./zImage2631q
+ZIMAGE=./zImage2635
 
 rm initrd.igz
 

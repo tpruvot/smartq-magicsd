@@ -80,9 +80,12 @@ chmod 0600 "${tmp}"
 dd ${parameters} 2> ${tmp} &
 pid=${!}
 
-SECONDS=1
+SECONDS=0
 while [ -d /proc/${pid} ] ; do
+
 	sleep 1
+	SECONDS=$(( ${SECONDS} + 1 ))
+
 	kill -USR1 ${pid} > /dev/null 2> /dev/null
 #114718+0 records in
 #114717+0 records out
@@ -128,9 +131,8 @@ while [ -d /proc/${pid} ] ; do
 			osuff="${x}"
 		fi
 	done
-	echo -en "\rIn: ${in}${isuff} (${ips}${ipssuff}/sec) - Out: ${out}${osuff} (${ops}${opssuff}/sec)"
+	echo -en "\rProgress: ${out}${osuff} (${ops}${opssuff}/sec) - Time: ${SECONDS}"
 done < "${tmp}"
 echo
 rm -f "${tmp}"in/sh
 
-dd if=/dev/mmcblk0p1 of=/sdcard/dump0p1.img conv=notrunc
