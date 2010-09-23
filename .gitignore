@@ -1,2 +1,2 @@
 *.o
-initramfs/content/lib/modules/2.6.24.7*
+#initramfs/content/lib/modules/2.6.24.7*
