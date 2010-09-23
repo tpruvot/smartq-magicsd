@@ -44,7 +44,6 @@ mount -t ramfs none /dev  -o exec,nosuid,mode=0755
 mkdir -p /dev/pts /dev/shm /dev/input /mnt/disk
 mount -t devpts devpts /dev/pts -o noexec,nosuid
 
-USB_POWER=/sys/devices/platform/hhtech_gpio/usbotgdrv_en
 LCD_LEVEL=/sys/devices/platform/s3c2410-lcd/backlight_level
 GPIO=hhtech_gpio
 if [ -d /sys/devices/platform/smartq_gpio ]; then
@@ -52,6 +51,8 @@ if [ -d /sys/devices/platform/smartq_gpio ]; then
    GPIO=smartq_gpio
    LCD_LEVEL=/sys/devices/platform/s3c-lcd/backlight_level
 fi
+
+USB_POWER=/sys/devices/platform/$GPIO/usbotgdrv_en
 
 LED_1=/sys/devices/platform/$GPIO/led1_en
 LED_2=/sys/devices/platform/$GPIO/led2_en
@@ -85,7 +86,7 @@ modprobe ohci_hcd &
 modprobe usbhid &
 
 # power mini USB port
-echo 1 > $USB_POWER
+echo on > $USB_POWER
 
 # Load MMC SDCard Driver Module if Present
 if [ -f $MOD_DIR/kernel/drivers/mmc/host/s3c-hsmmc.ko ] ; then
