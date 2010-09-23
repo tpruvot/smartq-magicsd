@@ -14,8 +14,6 @@ export PATH HOME
 MOD_DIR=/lib/modules/`/bin/uname -r`
 SDCARD=/mnt/mmcblk1p1
 
-echo 99 > $LCD_LEVEL
-
 [ -d $SDCARD ] || mkdir $SDCARD
 mount -t vfat -o remount,rw /dev/mmcblk1p1 $SDCARD
 sync
@@ -46,8 +44,8 @@ mount -t ramfs none /dev  -o exec,nosuid,mode=0755
 mkdir -p /dev/pts /dev/shm /dev/input /mnt/disk
 mount -t devpts devpts /dev/pts -o noexec,nosuid
 
+USB_POWER=/sys/devices/platform/hhtech_gpio/usbotgdrv_en
 LCD_LEVEL=/sys/devices/platform/s3c2410-lcd/backlight_level
-
 GPIO=hhtech_gpio
 if [ -d /sys/devices/platform/smartq_gpio ]; then
    # 2.6.31 (qdroid)
@@ -82,9 +80,12 @@ echo 50 > $LCD_LEVEL
 # 2.6.24
 modprobe ohci_hcd &
 # qdroid
-modprobe ohci-hcd & #or s3c_otg_hcd
+# modprobe ohci-hcd & #or s3c_otg_hcd
 
 modprobe usbhid &
+
+# power mini USB port
+echo 1 > $USB_POWER
 
 # Load MMC SDCard Driver Module if Present
 if [ -f $MOD_DIR/kernel/drivers/mmc/host/s3c-hsmmc.ko ] ; then
@@ -121,7 +122,7 @@ else
 fi
 
 echo "SmartQ Magic SDCard
-more tools will come...         http://tanguy.ath.cx - June 2010" > /dev/tty1 &
+more tools will come...         http://tanguy.ath.cx - Sept 2010" > /dev/tty1 &
 
 echo 0 > $LED_2
 
