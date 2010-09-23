@@ -1,0 +1,60 @@
+kernel/crypto/crypto_wq.ko:
+kernel/crypto/crypto_algapi.ko:
+kernel/crypto/aead.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/crypto_blkcipher.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/chainiv.ko: kernel/crypto/crypto_blkcipher.ko kernel/crypto/crypto_wq.ko kernel/crypto/crypto_algapi.ko kernel/crypto/rng.ko
+kernel/crypto/eseqiv.ko: kernel/crypto/crypto_blkcipher.ko kernel/crypto/crypto_algapi.ko kernel/crypto/rng.ko
+kernel/crypto/crypto_hash.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/pcompress.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/cryptomgr.ko: kernel/crypto/crypto_hash.ko kernel/crypto/aead.ko kernel/crypto/pcompress.ko kernel/crypto/crypto_blkcipher.ko kernel/crypto/crypto_algapi.ko
+kernel/crypto/ecb.ko: kernel/crypto/crypto_blkcipher.ko kernel/crypto/crypto_algapi.ko
+kernel/crypto/aes_generic.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/arc4.ko: kernel/crypto/crypto_algapi.ko
+kernel/crypto/rng.ko:
+kernel/crypto/krng.ko: kernel/crypto/crypto_algapi.ko kernel/crypto/rng.ko
+kernel/crypto/ansi_cprng.ko: kernel/crypto/crypto_algapi.ko kernel/crypto/rng.ko
+kernel/drivers/video/backlight/lcd.ko:
+kernel/drivers/video/backlight/platform_lcd.ko: kernel/drivers/video/backlight/lcd.ko
+kernel/drivers/video/backlight/tdo24m.ko: kernel/drivers/video/backlight/lcd.ko
+kernel/drivers/video/display/display.ko:
+kernel/drivers/spi/spi_bitbang.ko:
+kernel/drivers/spi/spi_gpio.ko: kernel/drivers/spi/spi_bitbang.ko
+kernel/drivers/spi/spi_s3c64xx.ko:
+kernel/drivers/spi/spidev.ko:
+kernel/drivers/usb/host/ohci-hcd.ko:
+kernel/drivers/usb/class/cdc-acm.ko:
+kernel/drivers/usb/class/usblp.ko:
+kernel/drivers/usb/serial/usbserial.ko:
+kernel/drivers/usb/serial/empeg.ko: kernel/drivers/usb/serial/usbserial.ko
+kernel/drivers/usb/serial/ftdi_sio.ko: kernel/drivers/usb/serial/usbserial.ko
+kernel/drivers/usb/serial/pl2303.ko: kernel/drivers/usb/serial/usbserial.ko
+kernel/drivers/input/serio/serport.ko:
+kernel/drivers/input/serio/serio_raw.ko:
+kernel/drivers/input/mouse/synaptics_i2c.ko:
+kernel/drivers/input/sparse-keymap.ko:
+kernel/drivers/mmc/card/mmc_block.ko:
+kernel/drivers/mmc/card/sdio_uart.ko:
+kernel/drivers/mmc/host/mmc_spi.ko: kernel/lib/crc7.ko kernel/lib/crc-itu-t.ko
+kernel/drivers/leds/leds-pwm.ko:
+kernel/drivers/connector/cn.ko:
+kernel/drivers/bluetooth/hci_vhci.ko: kernel/net/bluetooth/bluetooth.ko kernel/net/rfkill/rfkill.ko
+kernel/drivers/bluetooth/bcm203x.ko:
+kernel/drivers/bluetooth/bpa10x.ko: kernel/net/bluetooth/bluetooth.ko kernel/net/rfkill/rfkill.ko
+kernel/drivers/bluetooth/bfusb.ko: kernel/net/bluetooth/bluetooth.ko kernel/net/rfkill/rfkill.ko
+kernel/drivers/bluetooth/btusb.ko: kernel/net/bluetooth/bluetooth.ko kernel/net/rfkill/rfkill.ko
+kernel/drivers/bluetooth/btmrvl.ko: kernel/net/bluetooth/bluetooth.ko kernel/net/rfkill/rfkill.ko
+kernel/sound/core/oss/snd-mixer-oss.ko: kernel/sound/core/snd.ko
+kernel/sound/core/oss/snd-pcm-oss.ko: kernel/sound/core/snd-pcm.ko kernel/sound/core/snd-timer.ko kernel/sound/core/snd-page-alloc.ko kernel/sound/core/oss/snd-mixer-oss.ko kernel/sound/core/snd.ko
+kernel/sound/core/snd.ko:
+kernel/sound/core/snd-timer.ko: kernel/sound/core/snd.ko
+kernel/sound/core/snd-pcm.ko: kernel/sound/core/snd-timer.ko kernel/sound/core/snd.ko kernel/sound/core/snd-page-alloc.ko
+kernel/sound/core/snd-page-alloc.ko:
+kernel/sound/soc/snd-soc-core.ko: kernel/sound/core/snd-pcm.ko kernel/sound/core/snd-timer.ko kernel/sound/core/snd.ko kernel/sound/core/snd-page-alloc.ko
+kernel/sound/soc/s3c24xx/snd-soc-s3c24xx.ko: kernel/sound/soc/snd-soc-core.ko kernel/sound/core/snd-pcm.ko kernel/sound/core/snd-timer.ko kernel/sound/core/snd.ko kernel/sound/core/snd-page-alloc.ko
+kernel/net/wireless/cfg80211.ko: kernel/net/rfkill/rfkill.ko
+kernel/net/wireless/lib80211.ko:
+kernel/net/bluetooth/bluetooth.ko: kernel/net/rfkill/rfkill.ko
+kernel/net/mac80211/mac80211.ko: kernel/net/wireless/cfg80211.ko kernel/net/rfkill/rfkill.ko
+kernel/net/rfkill/rfkill.ko:
+kernel/lib/crc-itu-t.ko:
+kernel/lib/crc7.ko:
