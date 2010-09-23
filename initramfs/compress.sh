@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #use "apt-get uboot-mkimage" for the mkimage tool
 
@@ -6,8 +6,9 @@
 SDPART=/media/2B3F-7268
 
 #kernel to use
-ZIMAGE=./zImageMer
-ZIMAGE=./zImage2631q
+#ZIMAGE=./zimage
+ZIMAGE=./zImageSD
+#ZIMAGE=./zImage2631q
 #ZIMAGE=./zImage34
 #ZIMAGE=./zImage2635
 
