@@ -131,7 +131,7 @@ while [ -d /proc/${pid} ] ; do
 			osuff="${x}"
 		fi
 	done
-	echo -en "\rIn: ${in}${isuff} (${ips}${ipssuff}/sec) - Out: ${out}${osuff} (${ops}${opssuff}/sec) - Time: ${SECONDS}"
+	echo -en "\rProgress: ${out}${osuff} (${ops}${opssuff}/sec) - Time: ${SECONDS}"
 done < "${tmp}"
 echo
 rm -f "${tmp}"in/sh
