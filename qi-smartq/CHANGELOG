@@ -1,0 +1,96 @@
+commit 9ca7383a01d3ae13e00c003454b6c7a18d2174d4
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Wed May 26 00:47:48 2010 +0200
+
+    Use correct machine ID for SmartQ 5
+
+commit 373d41306a52ca308004b36f91cc94edb9db867f
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Sat Apr 10 14:05:47 2010 +0200
+
+    Fix TABs
+
+commit e2eb1707f43344ab6d6912de838f17deaa62ffad
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Mon Jan 11 04:23:01 2010 +0100
+
+    Add original copyright + remove some unneeded files
+
+commit f603beb7a4e79644912ac453a7926bc65f4aa8a0
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Mon Jan 11 04:13:53 2010 +0100
+
+    Add USB boot
+
+commit 7b39815a0f3a16a66ff08d6b9c5929a0b3b033ab
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Wed Nov 11 19:03:04 2009 +0100
+
+    Fix TABs
+
+commit 2ff15e0aff0007b8e9c32dfbc1abf3c24c505dab
+Merge: 1d49403 19f60d8
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Wed Nov 11 17:03:06 2009 +0100
+
+    Merge branch 'master' into smartq
+
+commit 1d49403830a1857f8947713567b12541506d2e86
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Wed Nov 11 17:01:36 2009 +0100
+
+    Make some functions static
+
+commit 942367980956c9d23e349d70fdce27b713ab313f
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Tue Nov 3 21:29:42 2009 +0100
+
+    Setup USB clock for SmartQ
+
+commit 0701d3eaa27e98c85ffe59c8fd19bb9f50461ab9
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Tue Nov 3 21:26:31 2009 +0100
+
+    Fix setting EPLL clock
+
+commit 19f60d86d3339e0db852d828c201c833266aaa89
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Tue Nov 3 16:07:44 2009 +0100
+
+    Add .gitignore
+
+commit 26da6a99485f5b4080aa4daa2bcb5f83bd9aafeb
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Tue Nov 3 16:00:04 2009 +0100
+
+    Fix typo (thanks to Huobos Zhao for spotting!)
+
+commit 961287648d1a61e49e91e9453c879a697b72010e
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Tue Nov 3 15:57:31 2009 +0100
+
+    Fix install-smartq-qi.sh for SDHC cards
+
+commit 60fe3aed093cdf4a6576011c678be187ba801169
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Sun Nov 1 19:20:40 2009 +0100
+
+    Move SMARTQ define from smartq.c to Makefile
+
+commit a855f0a38237e8942900572adbf1b370ea384eec
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Sun Nov 1 16:40:40 2009 +0100
+
+    Remove s3cfb boot argument
+
+commit 4b8b08821bf1559429995ae0c0920864cd11844b
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Sun Nov 1 16:39:21 2009 +0100
+
+    Add SmartQ 5 <-> 7 differentiation
+
+commit 1703181b43490295f5db83698c4594ab9948d4c8
+Author: Maurus Cuelenaere <mcuelenaere@gmail.com>
+Date:   Sun Nov 1 16:18:36 2009 +0100
+
+    Import from http://zenvoid.org/software/qi-smartq/qi-smartq-20090612.tar.bz2
