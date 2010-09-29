@@ -1,0 +1,4 @@
+*.o
+image/*
+tools/mkudfu
+

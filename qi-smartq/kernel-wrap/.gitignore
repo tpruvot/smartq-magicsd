@@ -1,0 +1,4 @@
+output.dat
+*.o
+link.ld
+tags.h

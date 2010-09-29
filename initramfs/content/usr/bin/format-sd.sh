@@ -60,6 +60,8 @@ fi
 
 if [ ! -z "`grep $SD /proc/mounts`" ] ; then
   echo "ERROR $SD seems to be mounted, that ain't right"
+  echo "unmounting /dev/$SD partitions... please retry..."
+  for drive in [1-9] ; do umount /dev/$SD$drive ; done
   exit 2
 fi
 
