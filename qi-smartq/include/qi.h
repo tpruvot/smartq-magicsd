@@ -34,6 +34,8 @@
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
+typedef unsigned int uint;
+typedef unsigned long ulong;
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 

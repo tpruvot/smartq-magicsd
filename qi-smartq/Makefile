@@ -18,17 +18,17 @@ include config.mk
 
 BUILD_DATE := $(shell date -Iseconds)
 BUILD_HOST := $(shell hostname)
-BUILD_VERSION := 20090612-SmartQ
+BUILD_VERSION := 20100526-SmartQ5
 
 LDS	= src/cpu/$(CPU)/qi.lds
 INCLUDE	= include
 IMAGE_DIR	= image
 TOOLS	= tools
-CFLAGS	= -Wall -Werror -I $(INCLUDE) -g -c -Os -fno-strict-aliasing -mlong-calls \
+CFLAGS	= -Wall -Wno-array-bounds -Werror -I $(INCLUDE) -g -c -Os -fno-strict-aliasing -mlong-calls \
 	  -fno-common -ffixed-r8 -msoft-float -fno-builtin -ffreestanding \
 	  -march=armv6 -mno-thumb-interwork -Wstrict-prototypes -fno-stack-protector \
 	  -DBUILD_HOST="${BUILD_HOST}" -DBUILD_VERSION="${BUILD_VERSION}" \
-	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DSMARTQ=7
+	  -DBUILD_DATE="${BUILD_DATE}" -DQI_CPU="${CPU}" -DSMARTQ=5
 LDFLAGS =
 
 S_SRCS	= $(wildcard src/cpu/$(CPU)/*.S)
