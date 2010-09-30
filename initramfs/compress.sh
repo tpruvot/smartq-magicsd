@@ -11,7 +11,7 @@ SDPART=/media/2B3F-7268
 #ZIMAGE=./zImageMer
 #ZIMAGE=./zImage2631q
 #ZIMAGE=./zImage34
-ZIMAGE=./zImage2635
+ZIMAGE=./zImage2636
 
 rm initrd.igz
 
