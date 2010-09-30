@@ -1,13 +1,14 @@
 CROSS_COMPILE ?= arm-linux-
-KERNEL_CMDLINE ?= root=/dev/ram rw init=/sbin/init
+KERNEL_CMDLINE ?= root=/dev/ram rw init=/sbin/init console=s3cfb nosplash debug
+KERNEL_IMAGE ?= ${KERNEL}/arch/arm/boot/Image
 
 SRCS	= boot.S tags.S kernel.S wrap.S
 OBJS	= $(patsubst %.S,%.o,$(SRCS))
-CFLAGS  = -Wall -DKERNEL_CMDLINE=\"${KERNEL_CMDLINE}\" \
-          -DINITRD=\"${INITRD}\"
+CFLAGS  = -Wall -DKERNEL_CMDLINE="\"${KERNEL_CMDLINE}\""
 
 ifneq (${INITRD},)
-	SRCS += initrd.S
+    SRCS += initrd.S
+    CFLAGS += -DINITRD="${INITRD}"
 else
     SRCS += initrd-empty.S
 endif
@@ -29,8 +30,8 @@ all: output.dat
 clean:
 	-rm -f output.dat *.o tags.h link.ld
 
-kernel.o: kernel.S ${KERNEL}/arch/arm/boot/Image
-	${gcc} ${CFLAGS} -DKERNEL=\"${KERNEL}/arch/arm/boot/Image\" -c -o $@ kernel.S
+kernel.o: kernel.S ${KERNEL_IMAGE}
+	${gcc} ${CFLAGS} -DKERNEL="\"${KERNEL_IMAGE}\"" -c -o $@ kernel.S
 
 %.o: %.S
 	${gcc} ${CFLAGS} -c -o $@ $^
