@@ -22,7 +22,7 @@ chmod +x content/sbin/init
 
 (cd content; find . -print | cpio -o --format=newc --owner=0) | gzip -c -9 > tmp.gz
 
-cp tmp.gz ../qi-smartq/initrd.gz
+cp tmp.gz ../qi-smartq/kernel-wrap/initrd.gz
 
 mkimage -d tmp.gz -A ARM -O Linux -C gzip -T RAMDisk -n "SmartQ initramfs" initrd.igz
 

@@ -7,6 +7,14 @@ altboot capability, etc....
 
 ...so lets go' :) (Tanguy)
 
+HOWTO:
+
+  go to the initramfs Directory, check content of "./compress.sh" and then execute
+  you only need a Kernel zImage and corresponding modules in content/lib/modules
+
+  this script will pack an initrd.igz compatible with SmartQ format and pack it
+  with kernel into an Image named SmartQ5
+  
 --dfc  
 David F. Carlson    Chronolytics, Inc.  Rochester, NY
 mailto:dave@chronolytics.com            http://www.chronolytics.com

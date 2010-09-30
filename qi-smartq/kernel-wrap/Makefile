@@ -3,15 +3,16 @@ KERNEL_CMDLINE ?= root=/dev/ram rw init=/sbin/init console=s3cfb nosplash debug
 KERNEL_IMAGE ?= ${KERNEL}/arch/arm/boot/Image
 
 SRCS	= boot.S tags.S kernel.S wrap.S
-OBJS	= $(patsubst %.S,%.o,$(SRCS))
 CFLAGS  = -Wall -DKERNEL_CMDLINE="\"${KERNEL_CMDLINE}\""
 
 ifneq (${INITRD},)
     SRCS += initrd.S
-    CFLAGS += -DINITRD="${INITRD}"
+    CFLAGS += -DINITRD="\"${INITRD}\""
 else
     SRCS += initrd-empty.S
 endif
+
+OBJS    = $(patsubst %.S,%.o,$(SRCS))
 
 ifdef MACHINE
 	CFLAGS += -D${MACHINE}

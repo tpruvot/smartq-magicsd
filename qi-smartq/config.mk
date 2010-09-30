@@ -30,12 +30,12 @@ export CROSS_COMPILE AD LD CC OBJCOPY OBJDUMP MKUDFU
 
 # For kernel-wrap
 
-#INITRD = initrd
-#export INITRD 
+INITRD = initrd.gz
+export INITRD 
 
 KERNEL = /var/git/mer-smartq-kernel
 export KERNEL
 
 #to force a kernel containing an initrd (set in kernel .config)
-KERNEL_IMAGE = /var/git/smartq/initramfs/zImageSD
-export KERNEL_IMAGE
+#KERNEL_IMAGE = /var/git/smartq/initramfs/zImageSD
+#export KERNEL_IMAGE
