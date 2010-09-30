@@ -35,3 +35,7 @@ export CROSS_COMPILE AD LD CC OBJCOPY OBJDUMP MKUDFU
 
 KERNEL = /var/git/mer-smartq-kernel
 export KERNEL
+
+#to force a kernel containing an initrd (set in kernel .config)
+KERNEL_IMAGE = /var/git/smartq/initramfs/zImage2636
+export KERNEL_IMAGE
