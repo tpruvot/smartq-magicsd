@@ -28,6 +28,9 @@ char *dl_ubus = NULL;
 
 int ep_out = 0;
 
+#ifndef VERSION
+#define VERSION ""
+#endif
 #define DBG(x) if (debug) { printf x; }
 
 void write_u32(unsigned char *dp, unsigned long val)
@@ -123,12 +126,14 @@ int verify_device(struct usb_device *dev)
 	DBG(("\t=> idProduct %x\n", dev->descriptor.idProduct));
 
 	if (dev->descriptor.idVendor == 0x5345 && dev->descriptor.idProduct == 0x1234) {
+		printf("S3C24XX Detected!\n");
 		ep_out = 3;
-		return 1;	
+		return 1;
 	}
 	else if(dev->descriptor.idVendor == 0x4e8 && dev->descriptor.idProduct == 0x1234){
 		printf("S3C64XX Detected!\n");
 		ep_out = 2;
+		dl_addr = 0x50000000L;
 		return 1;
 	}
 
@@ -188,16 +193,16 @@ int main(int argc, char **argv)
 	usb_dev_handle *devh;
 	int ret;
 
-	printf("SMDK42XX,S3C64XX USB Download Tool\n");
-	printf("Version 0.20 (c) 2004,2005,2006"
-	       " Ben Dooks <ben-linux@fluff.org>\n");
+	printf("SMDK24XX, S3C64XX USB Download Tool\n");
+	printf("Version %s (c) 2004,2005,2006"
+	       " Ben Dooks <ben-linux@fluff.org>\n", VERSION);
 	printf("\n");
 
 	while (1) {
 		int index = 0;
 		int c;
 
-		c = getopt_long(argc, argv, "a:b:d:f:s", long_opts, &index);
+		c = getopt_long(argc, argv, "a:b:d:f:s:x", long_opts, &index);
 
 		DBG(("option index %d\n",c ));
 
@@ -317,7 +322,6 @@ int main(int argc, char **argv)
 	write_header(dl_data, dl_addr, dl_size);
 	calc_cksum(dl_data, dl_size);
 
-	//ret = usb_bulk_write(devh, 3, (void *)dl_data, dl_size, 5*1000*1000);
 	ret = usb_bulk_write(devh, ep_out, (void *)dl_data, dl_size, 5*1000*1000);
 	printf("=> usb_bulk_write() returned %d\n", ret);
 
