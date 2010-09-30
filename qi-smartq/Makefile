@@ -81,6 +81,11 @@ ${UDFU_IMAGE}:${OBJS} ${MKUDFU}
 						-d ${IMAGE} ${UDFU_IMAGE}
 	@$(OBJDUMP) -d ${TARGET} >${IMAGE}.dis
 
+kernel:
+	make -C dltool
+	make -C kernel-wrap
+	sudo dltool/smdk-usbdl -f kernel-wrap/output.dat
+
 clean:
 	@rm -f *~ src/*.o src/*~
 	@rm -f src/cpu/*/*.o src/cpu/*/*~
