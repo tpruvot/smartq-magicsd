@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This script is free software. It comes without any warranty, to the extent
 # permitted by applicable law. You can modify it and/or redistribute it and
 # just DO WHAT THE FUCK YOU WANT TO.
@@ -19,6 +19,10 @@ The SmartQ Qi bootloader is written to the end of the SD card. When
 partitioning remember to reserve 1 MiB of free, unpartitioned space at the
 end. To be precise, at least the latest 1042 blocks (512 bytes each) of the
 SD card must be reserved.
+
+un-mount SDCard partitions :
+  for drive in [1-9] ; do umount /dev/sdX\$drive ; done
+
 END
 exit $1
 }

@@ -1,6 +1,19 @@
-SmartQ Qi
+SmartQ Qi - http://github.com/tpruvot/smartq-magicsd/commits/qi-smartq
 =========
+Forked from
 20100526 - http://gitorious.org/mcuelenaere-smartq/qi-smartq/commits/smartq
+
+Notes (tanguy.pruvot@gmail.com) :
+
+This version of Qi is an alternative bootloader to boot via USB OTG cable
+
+You dont have to pack this one in SmartQ5 MagicSD image, Qi just need to be
+placed at the End of the SDCard ie ./install-smartq-qi.sh /dev/sdb image/qi-xxx
+
+umount all your SD partitions, then execute the script to write on SDCard
+Put the OTG cable and SDCard in SmartQ5 and press Middle Button + Reset (or Power)
+
+--
 
 This is a modified Qi bootloader for the SmartQ 5 MID. It can boot from the
 external SD card (keep the "move" button pressed and then press "power").

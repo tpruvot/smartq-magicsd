@@ -162,10 +162,10 @@ void poweroff(void)
 	gpio_direction_output(GPIO_POWEROFF, 1);
 }
 
-/*void set_lcd_backlight(int flag)
+void set_lcd_backlight(int flag)
 {
 	gpio_direction_output(GPIO_LCD_BACKLIGHT, flag ? 1 : 0);
-}*/
+}
 
 int battery_probe(void)
 {
@@ -211,6 +211,7 @@ int battery_probe(void)
 static int is_this_board_smartq(void)
 {
 	/* FIXME: find something SmartQ specific */
+	set_lcd_backlight(1);
 	return 1;
 }
 
@@ -310,7 +311,7 @@ const struct board_api board_api_smartq = {
 	.get_board_variant = get_board_variant_smartq,
 	.is_this_board = is_this_board_smartq,
 	.putc = putc_smdk6410,
-	.commandline_board = "loglevel=6 rootwait ",
+	.commandline_board = "loglevel=6 rootwait s3cfb.backlight=80 ", //backlight setting for future kernel
 	.commandline_board_debug = "console=ttySAC0,115200n8 ignore_loglevel ",
 	.noboot = "boot/noboot-SMDK6410",
 	.append = "boot/append-SMDK6410",
