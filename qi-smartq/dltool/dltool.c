@@ -60,9 +60,9 @@ unsigned char *load_file(const char *fname, unsigned long *size,
 	}
 
 	*fsize = st.st_size;
-	*size = st.st_size + 10;
+	*size = st.st_size + 10; //4+4 before (addr+size), 2 after (checksum)
 
-	blk = malloc(*size);
+	blk = malloc(*size); 
 	if (blk == NULL) {
 		perror("malloc");
 		goto err;

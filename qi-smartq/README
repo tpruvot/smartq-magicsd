@@ -13,6 +13,13 @@ placed at the End of the SDCard ie ./install-smartq-qi.sh /dev/sdb image/qi-xxx
 umount all your SD partitions, then execute the script to write on SDCard
 Put the OTG cable and SDCard in SmartQ5 and press Middle Button + Reset (or Power)
 
+STATUS :
+
+dltool works (compiled and tested ok with an image provided by mcuelenaere)
+kernel-wrap : compile ok but images not working ?!?
+qi src : compiled and tested ok
+install-smartq-qi.sh : tested ok on a SDHC 8GB
+
 --
 
 This is a modified Qi bootloader for the SmartQ 5 MID. It can boot from the
