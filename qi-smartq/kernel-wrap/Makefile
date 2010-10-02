@@ -1,9 +1,10 @@
 CROSS_COMPILE ?= arm-linux-
+
 KERNEL_CMDLINE ?= root=/dev/ram rw init=/sbin/init console=s3cfb nosplash debug
-KERNEL_IMAGE ?= ${KERNEL}/arch/arm/boot/Image
+KERNEL_IMAGE ?= ${KERNEL}/arch/arm/boot/zImage
 
 SRCS	= boot.S tags.S kernel.S wrap.S
-CFLAGS  = -Wall -DKERNEL_CMDLINE="\"${KERNEL_CMDLINE}\""
+CFLAGS  = -Wall -DKERNEL_CMDLINE="\"${KERNEL_CMDLINE}\"" -DKERNEL="\"${KERNEL_IMAGE}\""
 
 ifneq (${INITRD},)
     SRCS += initrd.S
@@ -18,13 +19,12 @@ ifdef MACHINE
 	CFLAGS += -D${MACHINE}
 endif
 
-
 gcc     = ${CROSS_COMPILE}gcc
 objdump = ${CROSS_COMPILE}objdump
 objcopy = ${CROSS_COMPILE}objcopy
 ld      = ${CROSS_COMPILE}ld
 
-.PHONY:	${KERNEL}
+.PHONY:	${KERNEL} ${KERNEL_IMAGE}
 
 all: output.dat
 
@@ -45,6 +45,6 @@ link.ld: link.lds
 	${gcc} ${CFLAGS} -E - < $^ | grep -v '^#' > $@
 
 # build kernel data file from zImage in specified directory
-output.dat:	tags.h link.ld ${OBJS}
+output.dat:	tags.h link.ld  ${KERNEL_IMAGE} ${OBJS}
 	${ld} -o output.o -T link.ld ${OBJS}
 	${objcopy} -O binary output.o $@

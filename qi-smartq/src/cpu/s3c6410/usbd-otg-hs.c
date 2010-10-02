@@ -347,7 +347,7 @@ void s3c_usb_core_soft_reset(void)
 int s3c_usb_wait_cable_insert(void)
 {
 	u32 tmp;
-	int timeout = 1000000;
+	u32 timeout = 1000000;
 
 	while(timeout--) {
 	    tmp = readl(S3C_OTG_GOTGCTL);
