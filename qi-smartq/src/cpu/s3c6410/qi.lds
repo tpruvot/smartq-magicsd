@@ -47,13 +47,14 @@ SECTIONS
 	  src/cpu/s3c6410/smartq.o		(.text .rodata* .data .bss)
 	  src/cpu/s3c6410/serial-s3c64xx.o	(.text .rodata* .data .bss)
 	  src/utils.o				(.text .rodata* .data .bss)
+	  src/cpu/s3c6410/fbwrite.o		(.text .rodata* .data .bss)
 /*	  src/ctype.o				(.text .rodata* .data .bss) */
 	  *					(.steppingstone)
 	}
 
 	. = ALIGN(4);
 	.everything_else
-		__system_ram_start + 0x3000000 + SIZEOF(.text) :
+		__system_ram_start + 0x03000000 + SIZEOF(.text) :
 		AT (SIZEOF(.text))
 	{
 		*(.text .rodata* .data)

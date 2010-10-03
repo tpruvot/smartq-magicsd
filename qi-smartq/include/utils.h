@@ -14,6 +14,8 @@ void *memcpy(void*, const void*, size_t);
 void *memset(void*, int, size_t);
 void delay(unsigned long);
 void udelay(unsigned long);
+
+int vsnprintf2(char * buf, int len, const char *fmt, ...);
 int sprintf(char * buf, const char *fmt, ...);
 int printf(const char *fmt, ...);
 

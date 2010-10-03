@@ -35,6 +35,8 @@
 #include <usbd-otg-hs.h>
 #include <common.h>
 
+#include "fbwrite.h"
+
 #define SMDK6410_DEBUG_UART 0
 
 #define CHANNEL ((*(volatile u32*)0x0C003FEC == 0x7c300000) ? 1 : 0)
@@ -111,7 +113,7 @@ static int gpio_direction_set(int gpio, int out)
 }
 
 /* ret : high is 1, low is 0 */
-static int gpio_set_value(int gpio, int dat)
+int gpio_set_value(int gpio, int dat)
 {
 	int group = gpio >> 4, sub = gpio % 16;
 	unsigned int regdat = 0, val;
@@ -128,7 +130,7 @@ static int gpio_set_value(int gpio, int dat)
 	return 0;
 }
 
-static void gpio_direction_output(int gpio, int dat)
+void gpio_direction_output(int gpio, int dat)
 {
 	gpio_direction_set(gpio, 1);
 	gpio_set_value(gpio, dat);
@@ -147,12 +149,12 @@ void led_set(int flag)
 
 void led_blink(int l1, int l2)
 {
-	int i = 5;
+	int i = 3;
 	while(i--) {
 		led_set(l1);
-		udelay(1000000);
+		udelay(500000);
 		led_set(l2);
-		udelay(1000000);
+		udelay(500000);
 	}
 }
 
@@ -208,10 +210,18 @@ int battery_probe(void)
 	return 0;
 }
 
-static int is_this_board_smartq(void)
+int is_this_board_smartq(void)
 {
+	
+	
+	struct fbinfo *fbi = 0;
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
+	fb_init(fbi);
+	fb_printf(fbi,"abcdef");
+	fb_printf(fbi,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+	led_blink(0, 1);
+	//fb_clear(fbi);
 	return 1;
 }
 
