@@ -44,6 +44,15 @@
 #define CopyMMCtoMem(a,b,c,e) (((u8(*)(int, unsigned int, unsigned short, unsigned int*, u8)) \
 	(*((unsigned int*)0x0C004008)))(CHANNEL,a,b,c,e))
 
+
+/* In this file gpio variable has this format :
+
+   [31:4] 0xFFF0 : GPIO Channel, GPN = ('N'-'A') 
+    [3:0] 0x000F : GPIO PIN (0-15)
+
+*/
+
+
 /* LEDs are on GPN8 and GPN9 */
 #if SMARTQ == 5
 #define GPIO_LED_0 (('N'-'A')*16 + 8)
@@ -112,6 +121,31 @@ static int gpio_direction_set(int gpio, int out)
 	return 0;
 }
 
+int gpio_direction_get(int gpio)
+{
+	int dir=-1, decal;
+	int group = gpio >> 4, sub = gpio % 16;
+	unsigned char mask = 0b0011;
+	unsigned int regconf = 0, val;
+
+	regconf = gpio_base + gbase[group];
+	if(gcsz[group] == 4) {
+		mask = 0b1111;
+		if(sub >= 8) regconf += 4;
+	}
+
+	val = readl(regconf);
+	if(4 == gcsz[group]  &&  sub >= 8)
+		decal = gcsz[group] * (sub-8);
+	else
+		decal = gcsz[group] * sub;
+	
+	val &= (mask) << decal;
+	dir = val >> decal;
+
+	return dir;
+}
+
 /* ret : high is 1, low is 0 */
 int gpio_set_value(int gpio, int dat)
 {
@@ -126,7 +160,6 @@ int gpio_set_value(int gpio, int dat)
 	else    val &= ~(1<<sub);
 
 	writel(val, regdat);
-
 	return 0;
 }
 
@@ -149,12 +182,22 @@ void led_set(int flag)
 
 void led_blink(int l1, int l2)
 {
-	int i = 3;
+	int i = 2;
 	while(i--) {
 		led_set(l1);
-		udelay(500000);
+		udelay(300000);
 		led_set(l2);
-		udelay(500000);
+		udelay(300000);
+	}
+}
+
+void led_tilt(int led) {
+	int i = 2;
+	while(i--) {
+		led_set(led);
+		udelay(50000);
+		led_set(0);
+		udelay(100000);
 	}
 }
 
@@ -212,16 +255,15 @@ int battery_probe(void)
 
 int is_this_board_smartq(void)
 {
-	
-	
 	struct fbinfo *fbi = 0;
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
 	fb_init(fbi);
 	fb_printf(fbi,"abcdef");
 	fb_printf(fbi,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-	led_blink(0, 1);
+	led_blink(1, 0);
 	//fb_clear(fbi);
+	led_blink(0, 0);
 	return 1;
 }
 

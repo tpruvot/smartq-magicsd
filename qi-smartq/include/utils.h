@@ -12,6 +12,7 @@ void print32(unsigned int);
 void printdec(int);
 void *memcpy(void*, const void*, size_t);
 void *memset(void*, int, size_t);
+void *memset16(void*, unsigned short, unsigned int);
 void delay(unsigned long);
 void udelay(unsigned long);
 

@@ -41,17 +41,29 @@
 #define videoW 800
 #define videoH 480
 
-#define GPIO_S3C_GPN5 (('N'-'A')*16 + 5)
-#define S3C_CLKCON_HCLK_LCD		(1<<3)
-#define S3C_SPCON 0x7F0081A0
+#define RGB(r,g,b) (r&0x1f<<11) | (g&0x3c<<6) | (b&0x1f)
+
+//16 bpp colors (RGB 5/6/5):
+#define WHITE 0xffff
+#define RED   0xf800
+//#define GREEN 0x07e0
+#define GREEN 0x05e0
+#define BLUE  0x001f
+#define BLACK 0x0000
 
 static const int MAXOUTBUF = 2*1024;
 static const int PADOUTBUF = 32;
 
 static struct fbinfo fbi_store;
 
+
+
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
 #define readl(a) (*(volatile unsigned int *)(a)) 
+
+#define GPIO_S3C_GPN5 (('N'-'A')*16 + 5)
+#define S3C_CLKCON_HCLK_LCD		(1<<3)
+#define S3C_SPCON 0x7F0081A0
 
 /*
 int
@@ -125,11 +137,18 @@ void __preload
 blit_char(struct fbinfo *fbi, char c)
 {
 	int x,y;
-	if (fbi->x > fbi->maxx || fbi->y > fbi->maxy)
-		return;
+	const unsigned char * font;
+	uint16 * fbpos;
 
-	const unsigned char *font = &fbi->fonts[c * FONTHEIGHT];
-	uint16 *fbpos = &fbi->fb[fbi->scrx * fbi->y * FONTHEIGHT
+	if (fbi->x > fbi->maxx || fbi->y > fbi->maxy) {
+		led_blink(2,3);
+		return;
+	}
+	//if (fbi->fb == 0)
+	//	return;
+
+	font = &fbi->fonts[c * FONTHEIGHT];
+	fbpos = &fbi->fb[fbi->scrx * fbi->y * FONTHEIGHT
 							 + fbi->x * FONTWIDTH];
 	for (y=0; y<FONTHEIGHT; y++) {
 		for (x=0; x<FONTWIDTH; x++) {
@@ -143,15 +162,23 @@ blit_char(struct fbinfo *fbi, char c)
 void __preload
 goNewLine(struct fbinfo *fbi)
 {
+	int linebytes;
+	//uint32 b;
+
 	fbi->x = 0;
 	if (fbi->y < fbi->maxy-1) {
 		fbi->y++;
 		return;
 	}
-	int linebytes = fbi->scrx * FONTHEIGHT;
+	linebytes = fbi->scrx * FONTHEIGHT;
+	//for (b=0; b<(fbi->scrx * fbi->scry - linebytes) * BPP; b++) {
+	//	*((char*)(uint32)fbi->fb + b) = *((char*) &fbi->fb[linebytes]);
+	//}
+/*	
 	memcpy((char *)fbi->fb
 			, (char *)&fbi->fb[linebytes]
 			, (fbi->scrx * fbi->scry - linebytes) * BPP);
+*/
 }
 
 // Write a charcter to the framebuffer.
@@ -222,20 +249,22 @@ fb_puthex(struct fbinfo *fbi, uint32 val)
 void __preload
 fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 {
+	int32 val;
+	char* sarg;
+	char* n;
+	char* s;
+	va_list args;
+
 	if (!fbi->fb)
 		return;
 
-	va_list args;
 	va_start(args, fmt);
-	const char *s = fmt;
-	for (; *s; s++) {
+	for (s = (char *) &fmt[0]; *s; s++) {
 		if (*s != '%') {
 			fb_putc(fbi, *s);
 			continue;
 		}
-		const char *n = s+1;
-		int32 val;
-		const char *sarg;
+		n = (char *) s+1;
 		switch (*n) {
 		case '%':
 			fb_putc(fbi, '%');
@@ -257,12 +286,12 @@ fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 			fb_puthex(fbi, val);
 			break;
 		case 's':
-			sarg = va_arg(args, const char *);
+			sarg = (char *) va_arg(args, const char *);
 			fb_puts(fbi, sarg);
 			break;
 		default:
 			fb_putc(fbi, *s);
-			n = s;
+			n = (char *) s;
 		}
 		s = n;
 	}
@@ -279,22 +308,36 @@ fb_clear(struct fbinfo *fbi)
 	fbi->x = fbi->y = 0;
 }
 
-#define S3CVID_GPIO_OFFSET(pin) ((pin) & 31)
+//Some value checks... usefull when importing weird kernel headers
+#if S3C_GPICON != 0x7f008100
+	#error S3C_GPICON != 0x7f008100 !!
+#endif
+
+#define S3CVID_GPIO_OFFSET_CHECK(pin) ((pin) & 31)
 void
-gpio_cfg_vid_pin(unsigned int con, unsigned int num, int func)
+gpio_cfg_vid_pin(unsigned int con, unsigned int pin, int func)
 {
-	uint32 val, mask;
+	uint32 val, newval, mask;
 	volatile uint32 *gpio_con = (volatile uint32 *)(con);
 	
-	mask = 3 << S3CVID_GPIO_OFFSET(num)*2;
+	mask = 0b0011 << (S3CVID_GPIO_OFFSET_CHECK(pin)*2);
 	
-	func &= 3;
-	func <<= S3CVID_GPIO_OFFSET(num)*2;
+	func &= 0b0011;
+	func <<= (S3CVID_GPIO_OFFSET_CHECK(pin)*2);
 	
-	val = readl(gpio_con);
-	val &= ~mask;
-	val |= func;
-	writel(val,gpio_con);
+	newval = val = readl(gpio_con);
+	newval &= ~mask;
+	newval |= func;	
+	
+	if (newval != val) {
+		writel(newval,gpio_con);
+		udelay(10);
+		val = readl(gpio_con);
+		if (newval != val) {
+			func = (val & mask) >> (S3CVID_GPIO_OFFSET_CHECK(pin)*2);
+			led_blink(2,func);
+		}
+	}
 }
 
 // Initialize an fbi structure and display.
@@ -302,16 +345,32 @@ void
 fb_init(struct fbinfo *fbi)
 {
 	uint32 val;
-	uint32 FBMEM = 0x54000000; //uint16 FBMEM[videoW*videoH*BPP] 0x000bb800;
+	uint32 FBMEM = 0x5d000000+0xbb800; //uint16 FBMEM[videoW*videoH*BPP] 0x000bb800;
 	
 	//memset(&fbi_store, 0, sizeof(fbi_store));
 	fbi = &fbi_store;
 
 	fbi->fb = (uint16 *) FBMEM;
+	
+	fbi->x =0;
+	fbi->y =0;
+	fbi->scrx = videoW;
+	fbi->scry = videoH;
+	fbi->maxx = 133;//videoW / FONTWIDTH;
+	fbi->maxy = 60;//videoH / FONTHEIGHT;
+	
+	#ifdef BIGFONT
+		fbi->fonts = (unsigned char*) &fontdata_6x8[0][0];
+	#else
+		fbi->fonts = &fontdata_mini_4x6[0];
+	#endif
+
+	/****************** LCD INIT **********************/
 
 	/* Must be '0' for Normal-path instead of By-pass */
 	writel(0x0, S3C_HOSTIFB_MIFPCON);
 	
+	writel(0x00000000,S3C_VIDCON0); //disable LCD 0bxx00
 	/* enable clock to LCD */
 	val = readl(S3C_HCLK_GATE);
 	val |= S3C_CLKCON_HCLK_LCD;
@@ -320,10 +379,14 @@ fb_init(struct fbinfo *fbi)
 	/* select TFT LCD type (RGB I/F) */
 	val = readl(S3C_SPCON);
 	val &= ~0x3;
-	val |= (1 << 0);
+	val |= 1; //(1 << 0);
 	writel(val, S3C_SPCON);
-	
-	/* VD */
+
+#if (S3C_GPI0_LCD_VD0 != 2)
+#error S3C_GPI0_LCD_VD0 != 2
+#endif
+
+	/* GPIO PINS FUNCTION FOR LCD (2) */
 	gpio_cfg_vid_pin(S3C_GPICON, 0, S3C_GPI0_LCD_VD0);
 	gpio_cfg_vid_pin(S3C_GPICON, 1, S3C_GPI1_LCD_VD1);
 	gpio_cfg_vid_pin(S3C_GPICON, 2, S3C_GPI2_LCD_VD2);
@@ -354,57 +417,118 @@ fb_init(struct fbinfo *fbi)
 	gpio_cfg_vid_pin(S3C_GPJCON, 10, S3C_GPJ10_LCD_VDEN);
 	gpio_cfg_vid_pin(S3C_GPJCON, 11, S3C_GPJ11_LCD_VCLK);
 
-	/* module reset */
-	gpio_direction_output(GPIO_S3C_GPN5, 1);
-	udelay(200000);
-	
-	gpio_set_value(GPIO_S3C_GPN5, 0);
-	udelay(20000);
-	
-	gpio_set_value(GPIO_S3C_GPN5, 1);
-	udelay(20000);
+	//DRVCON_LCD [25:24]LCD Port Drive strength 
+	//00 = 2mA       01 = 4mA      10 = 7mA      11 = 9mA 
+	gpio_cfg_vid_pin(S3C_SPCON, 12, 0b01);
+		
+	val = (0xbb800*1);
+	writel(FBMEM,			S3C_VIDW01ADD0B0);
+	writel(videoW*videoH*BPP,	S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480)) : 0x0bb800
+	//writel(  0x05dc00,		S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480))
+	writel(0x00000320,		S3C_VIDW01ADD2); //PAGEWIDTH_F (1600) = 800*2
 
-	writel(FBMEM,     S3C_VIDW01ADD0B0);
-	writel(0x000bb800,S3C_VIDW01ADD1B0);
+	/*
+	val = (0xbb800*1);
+	writel(FBMEM+val,		S3C_VIDW01ADD0B0);
+	writel(  0x0bb800+val, 	S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480))
+
+	val = (0xbb800*2);
+	writel(FBMEM+val, 		S3C_VIDW00ADD0B0);
+	writel(  0x000000+val, 	S3C_VIDW00ADD1B0);
+	writel(0x00000640,		S3C_VIDW00ADD2);
+
+	val = (0xbb800*3);
+	writel(FBMEM+val,		S3C_VIDW02ADD0);
+	writel(0x0bb800+val, 	S3C_VIDW02ADD1);
+	writel(0x00000640,		S3C_VIDW02ADD2);
+
+	val = (0xbb800*4);
+	writel(FBMEM+val,		S3C_VIDW03ADD0);
+	writel(0x0bb800+val, 	S3C_VIDW03ADD1);
+	writel(0x00000640,		S3C_VIDW03ADD2);
+	*/
 	
-	writel(0x00000110,S3C_VIDCON0); //disable 0bxx00
-	writel(0x01d0c0e0,S3C_VIDCON1);
+	//writel(0x00000113,S3C_VIDCON0); set a end of proc
+	//writel(0x01d0c0e0,S3C_VIDCON1); //Acer M900
+	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
+	
+	writel(0x00000000,S3C_VIDTCON0);
+	//writel(0x00130909,S3C_VIDTCON1); //Synch 00|
+	writel(0x00000000,S3C_VIDTCON1); //Synch 00|
+	
+	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
+	//writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
+	writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 
-	writel(0x00010101,S3C_VIDTCON0);
-	writel(0x00130909,S3C_VIDTCON1);
-	writel(0x0018f9df,S3C_VIDTCON2);
+	writel(0x00000000,S3C_VIDTCON3);
 
+	//writel(0x00010015,S3C_WINCON0);
 	writel(0x00000000,S3C_WINCON0);
 	writel(0x00010015,S3C_WINCON1);
 	writel(0x00000000,S3C_WINCON2);
+	writel(0x00000000,S3C_WINCON3);	
+	writel(0x00000000,S3C_WINCON4);
 	
-	writel(0x00000000,S3C_VIDOSD1A);
-	writel(0x000efb1f,S3C_VIDOSD1B); //OSD_RightBotY_F OSD_RightBotX_F
-	writel(0x00000000,S3C_VIDOSD1C);
-	writel(0x0005dc00,S3C_VIDOSD1D); //OSDSIZE=384000. words
-
-
-	fbi->x =0;
-	fbi->y =0;
-	fbi->scrx = videoW;
-	fbi->scry = videoH;
-	fbi->maxx = 80;//videoW / FONTWIDTH;
-	fbi->maxy = 100;//videoH / FONTHEIGHT;
+	writel(0x000810,S3C_VIDOSD1A); //X:Y LeftTop
+	//writel(0x0efb1f,S3C_VIDOSD1B); //479:799
+	writel(0x18f9df,S3C_VIDOSD1B); //X:Y RightBot 799:479
+	writel(0x000000,S3C_VIDOSD1C);
+	writel(0x05dc00,S3C_VIDOSD1D); //OSDSIZE=384000. words
 	
-	memset(fbi->fb, 0x70, videoW*videoH);
+	writel(0b111,S3C_VIDINTCON1); //clear int
+	writel(0x03f19001,S3C_VIDINTCON0);
+	
+	//16 bpp colors (RGB 5/6/5):
+	//0xffff : white 
+	//0xf800 : red
+	//0x07e0 : green
+	//0x001f : blue
+
+    //or on 1 byte (memset)
+	//0xff : white, 0xf0 : red, 0x3c : blue, 0x0f : green, 0x77 : light green, 0x55 : gray
+	
+	//memset16(fbi->fb, RGB(0xff,0xff,0xff), videoW*videoH);
+	
+	memset16(fbi->fb, BLUE, videoW*videoH); 
+
+	for (val=0;val<videoH;val++) {
+		memset16(fbi->fb + (val*videoW) + val, 0, 1);
+	}
+	
+	for (val=0;val<videoW-1;val++) {
+		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, WHITE, 1);
+	}
+
+	memset16(fbi->fb + (2*videoW), GREEN, videoW); 
 
 	writel(readl(S3C_WINCON1) | S3C_WINCONx_ENWIN_F_ENABLE, S3C_WINCON1);
-
-	writel(0x00000113,S3C_VIDCON0); //enable 0bxx11
 	
+	/* module reset */
+	//gpio_direction_output(GPIO_S3C_GPN5, 1);
+	//udelay(100000);
 	
-	#ifdef BIGFONT
-		fbi->fonts = (unsigned char*) &fontdata_6x8[0][0];
-	#else
-		fbi->fonts = &fontdata_mini_4x6[0];
-	#endif
+	gpio_set_value(GPIO_S3C_GPN5, 0);
+	udelay(1000);
+	
+	gpio_set_value(GPIO_S3C_GPN5, 1);
+	udelay(1000);
 
+	memset16(fbi->fb + videoW*18, RED,  videoW*20); 
+	
+	fbi->x =50;
+	fbi->y =1;
+	blit_char(fbi, 'O');
+	blit_char(fbi, 'K');
+
+	writel(0x00000013 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16),S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
+	
+	//led_blink(0,1);
+	//delay(10);
+	//fb_clear(fbi);
+	//led_set(0);
+	
+	//memset16(fbi->fb + (2*videoW), BLACK, videoW); 
 //	Output("Video buffer at %p sx=%d sy=%d mx=%d my=%d"
 //		   , fbi->fb, fbi->scrx, fbi->scry, fbi->maxx, fbi->maxy);
 }

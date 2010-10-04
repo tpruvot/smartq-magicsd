@@ -496,7 +496,7 @@ void Output(const char *fmt, ...)
 
 
 
-#define S3C_GPIOREG(x) ((x) + 0x7f000000)
+#define S3C_GPIOREG(x) ((x) + 0x7f008000)
 
 /* GPI : 16 in/out port . LCD Video Out[15:0] */
 #define S3C_GPIDAT	   S3C_GPIOREG(0x104)
