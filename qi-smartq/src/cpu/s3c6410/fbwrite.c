@@ -292,6 +292,8 @@ void fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 			sarg = (char *) va_arg(args, const char *);
 			fb_puts(fbi, sarg);
 			break;
+		case '\0':
+			break;
 		default:
 			fb_putc(fbi, *s);
 			n = (char *) s;
@@ -439,8 +441,7 @@ struct fbinfo * fb_init(void)
 	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
 	
-	writel(0x00110759,S3C_VIDTCON0);
-	//writel(0x00130909,S3C_VIDTCON1); //Synch 00|
+	writel(0x00130909,S3C_VIDTCON0);
 	writel(0x005f6276,S3C_VIDTCON1); //Synch 00|
 	
 	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
@@ -470,10 +471,7 @@ struct fbinfo * fb_init(void)
 
 	for (val=0;val<videoH;val++) {
 		memset16(fbi->fb + (val*videoW) + val, 0, 1);
-	}
-	
-	for (val=0;val<videoW-1;val++) {
-		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, WHITE, 1);
+		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, 0, 1);
 	}
 
 	//memset16(fbi->fb + (2*videoW), GREEN, videoW); 
