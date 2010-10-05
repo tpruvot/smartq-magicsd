@@ -83,7 +83,7 @@
 #define _OOOO_ 0x1e
 #define _OOOOO 0x1f
 
-const unsigned char fontdata_6x8[256][8] = {
+unsigned char fontdata_6x8[256][8] = {
 
 /*0x00*/ {0,0,0,0,0,0,0,0},
 /*0x01*/ {0,0,0,0,0,0,0,0},

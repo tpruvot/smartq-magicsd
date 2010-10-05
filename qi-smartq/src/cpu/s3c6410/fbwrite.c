@@ -1,6 +1,7 @@
 /* Write strings directly to the framebuffer.
  *
- * (C) Copyright 2006 Kevin O'Connor <kevin@koconnor.net>
+ * Tanguy PRUVOT 2010
+ * Based on Kevin O'Connor HaReT code
  *
  * This file may be distributed under the terms of the GNU GPL license.
  */
@@ -10,16 +11,12 @@
 #include <s3c6410.h>
 #include <utils.h>
 
-//#include "linboot.h" // __preload
-
-#include "smartq.h"
+#include "smartq.h" // led_blink, gpio_set_value
 #include "fbwrite.h"
-
-#define __preload
 
 #define BIGFONT 1
 
-#ifdef BIGFONT
+#if BIGFONT == 1
 	#define FONTDATAMAX 2048
 	#define FONTWIDTH 6
 	#define FONTHEIGHT 8
@@ -29,7 +26,7 @@
 	#define FONTHEIGHT 6
 #endif
 
-#ifdef BIGFONT
+#if BIGFONT == 1
 	#include "font_6x8.h"
 	//extern const unsigned char fontdata_6x8[256][8];
 #else
@@ -50,13 +47,13 @@
 #define GREEN 0x05e0
 #define BLUE  0x001f
 #define BLACK 0x0000
+//or on 1 byte (memset)
+//0xff : white, 0xf0 : red, 0x3c : blue, 0x0f : green, 0x77 : light green, 0x55 : gray
 
-static const int MAXOUTBUF = 2*1024;
-static const int PADOUTBUF = 32;
+//static const int MAXOUTBUF = 2*1024;
+//static const int PADOUTBUF = 32;
 
 static struct fbinfo fbi_store;
-
-
 
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
 #define readl(a) (*(volatile unsigned int *)(a)) 
@@ -133,10 +130,11 @@ Output(const char *format, ...)
 */
 
 // Write a character to the screen.
-void __preload
-blit_char(struct fbinfo *fbi, char c)
+void
+blit_char(struct fbinfo *fbi, unsigned char c)
 {
-	int x,y;
+	uint8 x,y;
+	uint32 n;
 	const unsigned char * font;
 	uint16 * fbpos;
 
@@ -146,20 +144,24 @@ blit_char(struct fbinfo *fbi, char c)
 	}
 	//if (fbi->fb == 0)
 	//	return;
-
-	font = &fbi->fonts[c * FONTHEIGHT];
-	fbpos = &fbi->fb[fbi->scrx * fbi->y * FONTHEIGHT
-							 + fbi->x * FONTWIDTH];
+	n = c * FONTHEIGHT;
+	font = &fbi->fonts[n];
+	
+	n = fbi->y * FONTHEIGHT;
+	n *= fbi->scrx;
+	n += fbi->x * FONTWIDTH;
+	
+	fbpos = &fbi->fb[n];
 	for (y=0; y<FONTHEIGHT; y++) {
 		for (x=0; x<FONTWIDTH; x++) {
 			if (font[y] & (1<<(FONTWIDTH-x-1)))
-				fbpos[x] = 0xFFFF;
+				fbpos[x] = fbi->color;
 		}
 		fbpos += fbi->scrx;
 	}
 }
 
-void __preload
+void
 goNewLine(struct fbinfo *fbi)
 {
 	int linebytes;
@@ -182,7 +184,7 @@ goNewLine(struct fbinfo *fbi)
 }
 
 // Write a charcter to the framebuffer.
-void __preload
+void
 fb_putc(struct fbinfo *fbi, char c)
 {
 	if (c == '\n') {
@@ -196,7 +198,7 @@ fb_putc(struct fbinfo *fbi, char c)
 }
 
 // Write a string to the framebuffer.
-void __preload
+void
 fb_puts(struct fbinfo *fbi, const char *s)
 {
 	for (; *s; s++)
@@ -204,7 +206,7 @@ fb_puts(struct fbinfo *fbi, const char *s)
 }
 
 // Write an unsigned integer to the screen.
-void __preload
+void
 fb_putuint(struct fbinfo *fbi, uint32 val)
 {
 	char buf[12];
@@ -219,9 +221,9 @@ fb_putuint(struct fbinfo *fbi, uint32 val)
 	}
 	fb_puts(fbi, d);
 }
-
+/*
 // Write a single digit hex character to the screen.
-inline void __preload
+inline void
 fb_putsinglehex(struct fbinfo *fbi, uint32 val)
 {
 	if (val <= 9)
@@ -232,7 +234,7 @@ fb_putsinglehex(struct fbinfo *fbi, uint32 val)
 }
 
 // Write an integer in hexadecimal to the screen.
-void __preload
+void
 fb_puthex(struct fbinfo *fbi, uint32 val)
 {
 	fb_putsinglehex(fbi, (val >> 28) & 0xf);
@@ -246,7 +248,7 @@ fb_puthex(struct fbinfo *fbi, uint32 val)
 }
 
 // Write a string to the framebuffer.
-void __preload
+void
 fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 {
 	int32 val;
@@ -297,6 +299,7 @@ fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 	}
 	va_end(args);
 }
+*/
 
 // Clear the screen.
 void
@@ -304,7 +307,7 @@ fb_clear(struct fbinfo *fbi)
 {
 	if (!fbi->fb)
 		return;
-	memset(fbi->fb, 0, fbi->scrx * fbi->scry * BPP);
+	memset16(fbi->fb, 0, fbi->scrx * fbi->scry);
 	fbi->x = fbi->y = 0;
 }
 
@@ -313,9 +316,10 @@ fb_clear(struct fbinfo *fbi)
 	#error S3C_GPICON != 0x7f008100 !!
 #endif
 
+/*
 #define S3CVID_GPIO_OFFSET_CHECK(pin) ((pin) & 31)
 void
-gpio_cfg_vid_pin(unsigned int con, unsigned int pin, int func)
+gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
 {
 	uint32 val, newval, mask;
 	volatile uint32 *gpio_con = (volatile uint32 *)(con);
@@ -339,6 +343,7 @@ gpio_cfg_vid_pin(unsigned int con, unsigned int pin, int func)
 		}
 	}
 }
+*/
 
 // Initialize an fbi structure and display.
 void
@@ -352,17 +357,22 @@ fb_init(struct fbinfo *fbi)
 
 	fbi->fb = (uint16 *) FBMEM;
 	
-	fbi->x =0;
-	fbi->y =0;
+	fbi->x = fbi->y = 0;
 	fbi->scrx = videoW;
 	fbi->scry = videoH;
-	fbi->maxx = 133;//videoW / FONTWIDTH;
-	fbi->maxy = 60;//videoH / FONTHEIGHT;
 	
-	#ifdef BIGFONT
+	fbi->memsz = 0xbb800;//videoW*videoH;
+	
+	fbi->color = WHITE;
+	
+	#if BIGFONT == 1
 		fbi->fonts = (unsigned char*) &fontdata_6x8[0][0];
+		fbi->maxx = 133;//videoW / FONTWIDTH;
+		fbi->maxy = 60;//videoH / FONTHEIGHT;
 	#else
 		fbi->fonts = &fontdata_mini_4x6[0];
+		fbi->maxx = 200;//videoW / FONTWIDTH;
+		fbi->maxy = 80;//videoH / FONTHEIGHT;		
 	#endif
 
 	/****************** LCD INIT **********************/
@@ -382,48 +392,24 @@ fb_init(struct fbinfo *fbi)
 	val |= 1; //(1 << 0);
 	writel(val, S3C_SPCON);
 
-#if (S3C_GPI0_LCD_VD0 != 2)
-#error S3C_GPI0_LCD_VD0 != 2
-#endif
 
 	/* GPIO PINS FUNCTION FOR LCD (2) */
-	gpio_cfg_vid_pin(S3C_GPICON, 0, S3C_GPI0_LCD_VD0);
-	gpio_cfg_vid_pin(S3C_GPICON, 1, S3C_GPI1_LCD_VD1);
-	gpio_cfg_vid_pin(S3C_GPICON, 2, S3C_GPI2_LCD_VD2);
-	gpio_cfg_vid_pin(S3C_GPICON, 3, S3C_GPI3_LCD_VD3);
-	gpio_cfg_vid_pin(S3C_GPICON, 4, S3C_GPI4_LCD_VD4);
-	gpio_cfg_vid_pin(S3C_GPICON, 5, S3C_GPI5_LCD_VD5);
-	gpio_cfg_vid_pin(S3C_GPICON, 6, S3C_GPI6_LCD_VD6);
-	gpio_cfg_vid_pin(S3C_GPICON, 7, S3C_GPI7_LCD_VD7);
-	gpio_cfg_vid_pin(S3C_GPICON, 8, S3C_GPI8_LCD_VD8);
-	gpio_cfg_vid_pin(S3C_GPICON, 9, S3C_GPI9_LCD_VD9);
-	gpio_cfg_vid_pin(S3C_GPICON, 10, S3C_GPI10_LCD_VD10);
-	gpio_cfg_vid_pin(S3C_GPICON, 11, S3C_GPI11_LCD_VD11);
-	gpio_cfg_vid_pin(S3C_GPICON, 12, S3C_GPI12_LCD_VD12);
-	gpio_cfg_vid_pin(S3C_GPICON, 13, S3C_GPI13_LCD_VD13);
-	gpio_cfg_vid_pin(S3C_GPICON, 14, S3C_GPI14_LCD_VD14);
-	gpio_cfg_vid_pin(S3C_GPICON, 15, S3C_GPI15_LCD_VD15);
 
-	gpio_cfg_vid_pin(S3C_GPJCON, 0, S3C_GPJ0_LCD_VD16);
-	gpio_cfg_vid_pin(S3C_GPJCON, 1, S3C_GPJ1_LCD_VD17);
-	gpio_cfg_vid_pin(S3C_GPJCON, 2, S3C_GPJ2_LCD_VD18);
-	gpio_cfg_vid_pin(S3C_GPJCON, 3, S3C_GPJ3_LCD_VD19);
-	gpio_cfg_vid_pin(S3C_GPJCON, 4, S3C_GPJ4_LCD_VD20);
-	gpio_cfg_vid_pin(S3C_GPJCON, 5, S3C_GPJ5_LCD_VD21);
-	gpio_cfg_vid_pin(S3C_GPJCON, 6, S3C_GPJ6_LCD_VD22);
-	gpio_cfg_vid_pin(S3C_GPJCON, 7, S3C_GPJ7_LCD_VD23);
-	gpio_cfg_vid_pin(S3C_GPJCON, 8, S3C_GPJ8_LCD_HSYNC);
-	gpio_cfg_vid_pin(S3C_GPJCON, 9, S3C_GPJ9_LCD_VSYNC);
-	gpio_cfg_vid_pin(S3C_GPJCON, 10, S3C_GPJ10_LCD_VDEN);
-	gpio_cfg_vid_pin(S3C_GPJCON, 11, S3C_GPJ11_LCD_VCLK);
+	writel(0,S3C_GPIDAT);
+	writel(0,S3C_GPIPU);
+	writel(0xAAAAAAAA,S3C_GPICON);
+
+	writel(0,S3C_GPJDAT);
+	writel(0,S3C_GPJPU);
+	writel(0x00AAAAAA,S3C_GPJCON);
 
 	//DRVCON_LCD [25:24]LCD Port Drive strength 
 	//00 = 2mA       01 = 4mA      10 = 7mA      11 = 9mA 
-	gpio_cfg_vid_pin(S3C_SPCON, 12, 0b01);
+	//gpio_cfg_vid_pin(S3C_SPCON, 12, 0b01);
 		
-	val = (0xbb800*1);
+	//val = (0xbb800*1);
 	writel(FBMEM,			S3C_VIDW01ADD0B0);
-	writel(videoW*videoH*BPP,	S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480)) : 0x0bb800
+	writel(fbi->memsz,		S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480)) : 0x0bb800
 	//writel(  0x05dc00,		S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480))
 	writel(0x00000320,		S3C_VIDW01ADD2); //PAGEWIDTH_F (1600) = 800*2
 
@@ -479,15 +465,6 @@ fb_init(struct fbinfo *fbi)
 	writel(0b111,S3C_VIDINTCON1); //clear int
 	writel(0x03f19001,S3C_VIDINTCON0);
 	
-	//16 bpp colors (RGB 5/6/5):
-	//0xffff : white 
-	//0xf800 : red
-	//0x07e0 : green
-	//0x001f : blue
-
-    //or on 1 byte (memset)
-	//0xff : white, 0xf0 : red, 0x3c : blue, 0x0f : green, 0x77 : light green, 0x55 : gray
-	
 	//memset16(fbi->fb, RGB(0xff,0xff,0xff), videoW*videoH);
 	
 	memset16(fbi->fb, BLUE, videoW*videoH); 
@@ -514,14 +491,24 @@ fb_init(struct fbinfo *fbi)
 	gpio_set_value(GPIO_S3C_GPN5, 1);
 	udelay(1000);
 
-	memset16(fbi->fb + videoW*18, RED,  videoW*20); 
+	//memset16(fbi->fb + videoW*18, RED,  videoW*20); 
 	
-	fbi->x =50;
-	fbi->y =1;
-	blit_char(fbi, 'O');
-	blit_char(fbi, 'K');
+	fbi->x =40;
+	fbi->y =8;
+	//blit_char(fbi, 'O');
+	//blit_char(fbi, 'K');
+	//fb_puts(fbi, "MagicSD Qi USB v1.0");
+	
+	for (val=30;val<256;val++) {
+		//if (val % 85 == 0) {
+		//	fbi->x =40;
+		//	fbi->y++;
+		//}
+		fb_putc(fbi, 0xff & val);
+	}
 
-	writel(0x00000013 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16),S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
+	writel(0x00000113,S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
+	//ou 0x13 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16)
 	
 	//led_blink(0,1);
 	//delay(10);

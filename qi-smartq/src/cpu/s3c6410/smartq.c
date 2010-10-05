@@ -259,8 +259,8 @@ int is_this_board_smartq(void)
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
 	fb_init(fbi);
-	fb_printf(fbi,"abcdef");
-	fb_printf(fbi,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+	fb_puts(fbi,"abcdef");
+	fb_puts(fbi,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 	led_blink(1, 0);
 	//fb_clear(fbi);
 	led_blink(0, 0);

@@ -3,9 +3,6 @@
 
 // Functions for writing strings directly to the frame buffer
 
-
-#define BIGFONT 1 
-
 typedef signed char int8;
 typedef unsigned char uint8;
 typedef signed short int16;
@@ -15,13 +12,17 @@ typedef unsigned int uint32;
 
 struct fbinfo {
     uint16 *fb;
-    int scrx, scry, maxx, maxy;
-    int x, y;
+    uint16 scrx, scry;
+    uint32 memsz;
+    uint16 x, y;
+    uint16 maxx, maxy;
+    uint16 color;
     const unsigned char *fonts;
 };
 
-void fb_printf(struct fbinfo *, const char *fmt, ...)
-    __attribute__ ((format (printf, 2, 3)));
+//void fb_printf(struct fbinfo *, const char *fmt, ...)
+//    __attribute__ ((format (printf, 2, 3)));
+void fb_puts(struct fbinfo *fbi, const char *s);
 void fb_clear(struct fbinfo *);
 void fb_init(struct fbinfo *);
 
@@ -504,29 +505,15 @@ void Output(const char *fmt, ...)
 #define S3C_GPIPU	   S3C_GPIOREG(0x108)
 #define S3C_GPISLPCON	   S3C_GPIOREG(0x10C)
 
-#define S3C_GPI0_LCD_VD0		(2)
-#define S3C_GPI1_LCD_VD1		(2)
-#define S3C_GPI2_LCD_VD2		(2)
-#define S3C_GPI3_LCD_VD3		(2)
-#define S3C_GPI4_LCD_VD4		(2)
-#define S3C_GPI5_LCD_VD5		(2)
-#define S3C_GPI6_LCD_VD6		(2)
-#define S3C_GPI7_LCD_VD7		(2)
-#define S3C_GPI8_LCD_VD8		(2)
-#define S3C_GPI9_LCD_VD9		(2)
-#define S3C_GPI10_LCD_VD10		(2)
-#define S3C_GPI11_LCD_VD11		(2)
-#define S3C_GPI12_LCD_VD12		(2)
-#define S3C_GPI13_LCD_VD13		(2)
-#define S3C_GPI14_LCD_VD14		(2)
-#define S3C_GPI15_LCD_VD15		(2)
-
+#define S3C_GPI_LCD_VDX		(2)
 
 /* GPJ : 12 in/out port . LCD Video Out[23:16], Control signals */
 #define S3C_GPJDAT			S3C_GPIOREG(0x124)
 #define S3C_GPJCON			S3C_GPIOREG(0x120)
 #define S3C_GPJPU			S3C_GPIOREG(0x128)
 #define S3C_GPJSLPCON		S3C_GPIOREG(0x12C)
+
+#define S3C_GPJ_LCD_VDX		(2)
 
 #define S3C_GPJ0_LCD_VD16		(2)
 #define S3C_GPJ1_LCD_VD17		(2)
