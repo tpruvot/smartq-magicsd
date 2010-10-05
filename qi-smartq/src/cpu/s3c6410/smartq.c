@@ -212,12 +212,8 @@ int battery_probe(void)
 
 static int is_this_board_smartq(void)
 {
-	struct fbinfo *fbi = 0;
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
-	fb_init(fbi);
-	//fb_clear(fbi);
-	led_blink(1, 0);
 	return 1;
 }
 
@@ -255,6 +251,11 @@ static int usb_init(void)
 
 static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 {
+	struct fbinfo *fbi = 0;
+	fb_init(fbi);
+	//fb_clear(fbi);
+	led_set(1);
+	
     (void)buf;
     (void)start512;
     (void)blocks512;
@@ -266,7 +267,8 @@ static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 	s3c_receive_done = 0;
 	s3c_usbd_dn_cnt = 0;
 
-	printf("Waiting for DN to transmit data\n");
+	//printf
+	//fb_puts(fbi,"Waiting for DN to transmit data\n");
 
 	while (1) {
 		if (S3C_USBD_DETECT_IRQ()) {

@@ -17,9 +17,13 @@
 #define BIGFONT 1
 
 #if BIGFONT == 1
-	#define FONTDATAMAX 2048
 	#define FONTWIDTH 6
 	#define FONTHEIGHT 8
+	#if FULL_ASCII == 1
+		#define FONTDATAMAX 2048
+	#else
+		#define FONTDATAMAX 1024
+	#endif
 #else
 	#define FONTDATAMAX 1536
 	#define FONTWIDTH 4
@@ -144,9 +148,14 @@ blit_char(struct fbinfo *fbi, unsigned char c)
 	}
 	//if (fbi->fb == 0)
 	//	return;
+	
+	#if FULL_ASCII == 0
+		if (c>127) return;
+	#endif
+	
 	n = c * FONTHEIGHT;
 	font = &fbi->fonts[n];
-	
+
 	n = fbi->y * FONTHEIGHT;
 	n *= fbi->scrx;
 	n += fbi->x * FONTWIDTH;
@@ -357,7 +366,7 @@ fb_init(struct fbinfo *fbi)
 
 	fbi->fb = (uint16 *) FBMEM;
 	
-	fbi->x = fbi->y = 0;
+	fbi->x = fbi->y = 1;
 	fbi->scrx = videoW;
 	fbi->scry = videoH;
 	
@@ -476,7 +485,7 @@ fb_init(struct fbinfo *fbi)
 		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, WHITE, 1);
 	}
 
-	memset16(fbi->fb + (2*videoW), GREEN, videoW); 
+	//memset16(fbi->fb + (2*videoW), GREEN, videoW); 
 
 	writel(readl(S3C_WINCON1) | S3C_WINCONx_ENWIN_F_ENABLE, S3C_WINCON1);
 	
@@ -492,8 +501,7 @@ fb_init(struct fbinfo *fbi)
 
 	//memset16(fbi->fb + videoW*18, RED,  videoW*20); 
 	
-	fbi->x =10;
-	fbi->y =8;
+	//fbi->x = fbi->y = 6;
 	//blit_char(fbi, 'O');
 	//blit_char(fbi, 'K');
 	//fb_puts(fbi, "MagicSD Qi USB v1.0");
@@ -508,6 +516,8 @@ fb_init(struct fbinfo *fbi)
 
 	writel(0x00000113,S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
 	//ou 0x13 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16)
+
+	fbi->x = fbi->y = 2;
 	
 	//led_blink(0,1);
 	//delay(10);

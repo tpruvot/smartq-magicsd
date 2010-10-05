@@ -17,6 +17,8 @@
 // 6x8 terminal font
 //
 
+#define FULL_ASCII 0
+
 #define gfx_termmedium     41
 
 #define font41WindowWidth  768
@@ -83,8 +85,13 @@
 #define _OOOO_ 0x1e
 #define _OOOOO 0x1f
 
-const unsigned char fontdata_6x8[256][8] = {
+#if FULL_ASCII == 1
+	#define CHAR_COUNT 256
+#else
+	#define CHAR_COUNT 128
+#endif
 
+const unsigned char fontdata_6x8[CHAR_COUNT][8] = {
 /*0x00*/ {0,0,0,0,0,0,0,0},
 /*0x01*/ {0,0,0,0,0,0,0,0},
 /*0x02*/ {0,0,0,0,0,0,0,0},
@@ -887,7 +894,12 @@ const unsigned char fontdata_6x8[256][8] = {
 	      __O___,
 	      ___O__,
 	      ______,
-	      ______},
+	      ______}
+
+#if FULL_ASCII == 0
+};
+#else
+,
 
 /*0x80*/ {0,0,0,0,0,0,0,0},
 /*0x81*/ {0,0,0,0,0,0,0,0},
@@ -1140,3 +1152,5 @@ const unsigned char fontdata_6x8[256][8] = {
 /*0xff*/ {0,0,0,0,0,0,0,0}
 
 };
+
+#endif
