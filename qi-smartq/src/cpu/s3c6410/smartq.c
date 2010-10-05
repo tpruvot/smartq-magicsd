@@ -74,6 +74,8 @@ static unsigned short gbase[] =
 
 static unsigned long gpio_base = 0x7f008000;
 
+struct fbinfo *fbi = 0;
+
 #define readl(a) (*(volatile unsigned int *)(a))
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
 
@@ -214,11 +216,14 @@ static int is_this_board_smartq(void)
 {
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
+	led_set(3);
 	return 1;
 }
 
 static void putc_smdk6410(char c)
 {
+	//if (fbi!=0)
+	//	fb_putc(fbi, c);
 	serial_putc_s3c64xx(SMDK6410_DEBUG_UART, c);
 }
 
@@ -242,20 +247,23 @@ int sd_card_block_read_smartq(unsigned char *buf, unsigned long start512, int bl
 	return blocks512;
 }
 
-static int usb_inited;
+static int usb_inited=0;
 static int usb_init(void)
 {
 	usb_inited = s3c_usbctl_init();
+	
+	fbi = fb_init();
+	led_set(0);
+	//fb_clear(fbi);
+	fb_puthex(fbi,(uint32)fbi);
+	fb_putc(fbi,' ');
+	fb_puthex(fbi,(uint32)usb_inited);
+	
 	return usb_inited;
 }
 
 static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 {
-	struct fbinfo *fbi = 0;
-	fb_init(fbi);
-	//fb_clear(fbi);
-	led_set(1);
-	
     (void)buf;
     (void)start512;
     (void)blocks512;
@@ -268,7 +276,7 @@ static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 	s3c_usbd_dn_cnt = 0;
 
 	//printf
-	//fb_puts(fbi,"Waiting for DN to transmit data\n");
+	//fb_puts(fbi, (uchar*)"Waiting for DN to transmit data\n");
 
 	while (1) {
 		if (S3C_USBD_DETECT_IRQ()) {

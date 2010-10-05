@@ -22,13 +22,13 @@ struct fbinfo {
 
 //void fb_printf(const char *fmt, ...)
 //    __attribute__ ((format (printf, 2, 3)));
-void fb_puts(struct fbinfo *fbi, const char *s);
+void fb_puts(struct fbinfo *, const char *);
+void fb_putc(struct fbinfo *, char);
+void fb_puthex(struct fbinfo *, uint32);
 //void fb_putsinglehex(struct fbinfo *, uint32);
 void fb_clear(struct fbinfo *);
 
-void fb_init(struct fbinfo *);
-void fb_get(struct fbinfo *);
-
+struct fbinfo * fb_init(void);
 
 void Output(const char *fmt, ...)
 	__attribute__ ((format (printf, 1, 2)));
