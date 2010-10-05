@@ -17,9 +17,13 @@
 #define BIGFONT 1
 
 #if BIGFONT == 1
-	#define FONTDATAMAX 2048
 	#define FONTWIDTH 6
 	#define FONTHEIGHT 8
+	#if FULL_ASCII == 1
+		#define FONTDATAMAX 2048
+	#else
+		#define FONTDATAMAX 1024
+	#endif
 #else
 	#define FONTDATAMAX 1536
 	#define FONTWIDTH 4
@@ -38,15 +42,23 @@
 #define videoW 800
 #define videoH 480
 
-#define RGB(r,g,b) (r&0x1f<<11) | (g&0x3c<<6) | (b&0x1f)
+//#define RGB565(r,g,b) (r&0x1f<<11) | (g&0x3c<<6) | (b&0x1f)
+#define RGB555(r,g,b) (r&0x1f<<10) | (g&0x1f<<5) | (b&0x1f)
+
+//16 bpp colors
+#define BLACK 0x0000
+#define WHITE 0x7fff
 
 //16 bpp colors (RGB 5/6/5):
-#define WHITE 0xffff
-#define RED   0xf800
-//#define GREEN 0x07e0
-#define GREEN 0x05e0
-#define BLUE  0x001f
-#define BLACK 0x0000
+//#define RED   0xf800
+//#define GREEN 0x07e0//#define GREEN 0x05e0
+//#define BLUE  0x001f
+
+//16 bpp colors (RGB 5/5/5):
+#define RED   0x7C00
+#define GREEN 0x03E0
+#define BLUE  0x001F
+
 //or on 1 byte (memset)
 //0xff : white, 0xf0 : red, 0x3c : blue, 0x0f : green, 0x77 : light green, 0x55 : gray
 
@@ -63,8 +75,7 @@ static struct fbinfo fbi_store;
 #define S3C_SPCON 0x7F0081A0
 
 /*
-int
-convertNL(char *outbuf, int maxlen, const char *inbuf, int len)
+int convertNL(char *outbuf, int maxlen, const char *inbuf, int len)
 {
     // Convert CR to CR/LF since telnet requires this
     const char *s = inbuf, *s_end = &inbuf[len];
@@ -90,8 +101,7 @@ convertNL(char *outbuf, int maxlen, const char *inbuf, int len)
 }
 
 // Output message to screen/logs/socket.
-void
-Output(const char *format, ...)
+void Output(const char *format, ...)
 {
     // Check for error indicator (eg, format starting with "<0>")
     int code = 7;
@@ -130,8 +140,7 @@ Output(const char *format, ...)
 */
 
 // Write a character to the screen.
-void
-blit_char(struct fbinfo *fbi, unsigned char c)
+void blit_char(struct fbinfo *fbi, unsigned char c)
 {
 	uint8 x,y;
 	uint32 n;
@@ -144,9 +153,14 @@ blit_char(struct fbinfo *fbi, unsigned char c)
 	}
 	//if (fbi->fb == 0)
 	//	return;
+	
+	#if FULL_ASCII == 0
+		if (c & 0x80) return;
+	#endif
+	
 	n = c * FONTHEIGHT;
 	font = &fbi->fonts[n];
-	
+
 	n = fbi->y * FONTHEIGHT;
 	n *= fbi->scrx;
 	n += fbi->x * FONTWIDTH;
@@ -161,8 +175,7 @@ blit_char(struct fbinfo *fbi, unsigned char c)
 	}
 }
 
-void
-goNewLine(struct fbinfo *fbi)
+void goNewLine(struct fbinfo *fbi)
 {
 	int linebytes;
 	//uint32 b;
@@ -184,8 +197,7 @@ goNewLine(struct fbinfo *fbi)
 }
 
 // Write a charcter to the framebuffer.
-void
-fb_putc(struct fbinfo *fbi, char c)
+void fb_putc(struct fbinfo *fbi, char c)
 {
 	if (c == '\n') {
 		goNewLine(fbi);
@@ -198,16 +210,14 @@ fb_putc(struct fbinfo *fbi, char c)
 }
 
 // Write a string to the framebuffer.
-void
-fb_puts(struct fbinfo *fbi, const char *s)
+void fb_puts(struct fbinfo *fbi, const char *s)
 {
 	for (; *s; s++)
 		fb_putc(fbi, *s);
 }
 
 // Write an unsigned integer to the screen.
-void
-fb_putuint(struct fbinfo *fbi, uint32 val)
+void fb_putuint(struct fbinfo *fbi, uint32 val)
 {
 	char buf[12];
 	char *d = &buf[sizeof(buf) - 1];
@@ -221,10 +231,9 @@ fb_putuint(struct fbinfo *fbi, uint32 val)
 	}
 	fb_puts(fbi, d);
 }
-/*
+
 // Write a single digit hex character to the screen.
-inline void
-fb_putsinglehex(struct fbinfo *fbi, uint32 val)
+inline void fb_putsinglehex(struct fbinfo *fbi, uint32 val)
 {
 	if (val <= 9)
 		val = '0' + val;
@@ -234,9 +243,9 @@ fb_putsinglehex(struct fbinfo *fbi, uint32 val)
 }
 
 // Write an integer in hexadecimal to the screen.
-void
-fb_puthex(struct fbinfo *fbi, uint32 val)
+void fb_puthex(struct fbinfo *fbi, uint32 val)
 {
+	fb_puts(fbi, "0x");
 	fb_putsinglehex(fbi, (val >> 28) & 0xf);
 	fb_putsinglehex(fbi, (val >> 24) & 0xf);
 	fb_putsinglehex(fbi, (val >> 20) & 0xf);
@@ -247,9 +256,9 @@ fb_puthex(struct fbinfo *fbi, uint32 val)
 	fb_putsinglehex(fbi, (val >> 0) & 0xf);
 }
 
+
 // Write a string to the framebuffer.
-void
-fb_printf(struct fbinfo *fbi, const char *fmt, ...)
+void fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 {
 	int32 val;
 	char* sarg;
@@ -291,6 +300,8 @@ fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 			sarg = (char *) va_arg(args, const char *);
 			fb_puts(fbi, sarg);
 			break;
+		case '\0':
+			break;
 		default:
 			fb_putc(fbi, *s);
 			n = (char *) s;
@@ -299,11 +310,10 @@ fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 	}
 	va_end(args);
 }
-*/
+/**/
 
 // Clear the screen.
-void
-fb_clear(struct fbinfo *fbi)
+void fb_clear(struct fbinfo *fbi)
 {
 	if (!fbi->fb)
 		return;
@@ -318,8 +328,7 @@ fb_clear(struct fbinfo *fbi)
 
 /*
 #define S3CVID_GPIO_OFFSET_CHECK(pin) ((pin) & 31)
-void
-gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
+void gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
 {
 	uint32 val, newval, mask;
 	volatile uint32 *gpio_con = (volatile uint32 *)(con);
@@ -345,12 +354,12 @@ gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
 }
 */
 
-// Initialize an fbi structure and display.
-void
-fb_init(struct fbinfo *fbi)
+// Initialize fbi structure and display.
+struct fbinfo * fb_init(void)
 {
+	struct fbinfo * fbi;
 	uint32 val;
-	uint32 FBMEM = 0x5d000000+0xbb800; //uint16 FBMEM[videoW*videoH*BPP] 0x000bb800;
+	uint32 FBMEM = 0x5d000000;
 	
 	//memset(&fbi_store, 0, sizeof(fbi_store));
 	fbi = &fbi_store;
@@ -366,7 +375,7 @@ fb_init(struct fbinfo *fbi)
 	fbi->color = WHITE;
 	
 	#if BIGFONT == 1
-		fbi->fonts = (unsigned char*) &fontdata_6x8[0][0];
+		fbi->fonts = &fontdata_6x8[0][0];
 		fbi->maxx = 133;//videoW / FONTWIDTH;
 		fbi->maxy = 60;//videoH / FONTHEIGHT;
 	#else
@@ -434,26 +443,24 @@ fb_init(struct fbinfo *fbi)
 	writel(0x00000640,		S3C_VIDW03ADD2);
 	*/
 	
-	//writel(0x00000113,S3C_VIDCON0); set a end of proc
+	//writel(0x00000113,S3C_VIDCON0); set at end of proc
+
 	//writel(0x01d0c0e0,S3C_VIDCON1); //Acer M900
 	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
 	
-	writel(0x00000000,S3C_VIDTCON0);
-	//writel(0x00130909,S3C_VIDTCON1); //Synch 00|
-	writel(0x00000000,S3C_VIDTCON1); //Synch 00|
+	writel(0x00130909,S3C_VIDTCON0); //Synch Pos V
+	writel(0x005f6276,S3C_VIDTCON1); //Synch Pos H
 	
 	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
-	//writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 	writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
-
-	writel(0x00000000,S3C_VIDTCON3);
 
 	//writel(0x00010015,S3C_WINCON0);
 	writel(0x00000000,S3C_WINCON0);
-	writel(0x00010015,S3C_WINCON1);
+	//writel(0x00010015,S3C_WINCON1); 565 RGB
+	writel(0x00010019,S3C_WINCON1); //1555 ARGB
 	writel(0x00000000,S3C_WINCON2);
-	writel(0x00000000,S3C_WINCON3);	
+	writel(0x00000000,S3C_WINCON3);
 	writel(0x00000000,S3C_WINCON4);
 	
 	writel(0x000810,S3C_VIDOSD1A); //X:Y LeftTop
@@ -467,17 +474,14 @@ fb_init(struct fbinfo *fbi)
 	
 	//memset16(fbi->fb, RGB(0xff,0xff,0xff), videoW*videoH);
 	
-	memset16(fbi->fb, BLUE, videoW*videoH); 
+	memset16(fbi->fb, RED, videoW*videoH); 
 
 	for (val=0;val<videoH;val++) {
 		memset16(fbi->fb + (val*videoW) + val, 0, 1);
-	}
-	
-	for (val=0;val<videoW-1;val++) {
-		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, WHITE, 1);
+		memset16(fbi->fb + ((videoH-val-1)*videoW) - val, 0, 1);
 	}
 
-	memset16(fbi->fb + (2*videoW), GREEN, videoW); 
+	//memset16(fbi->fb + (2*videoW), GREEN, videoW); 
 
 	writel(readl(S3C_WINCON1) | S3C_WINCONx_ENWIN_F_ENABLE, S3C_WINCON1);
 	
@@ -493,22 +497,22 @@ fb_init(struct fbinfo *fbi)
 
 	//memset16(fbi->fb + videoW*18, RED,  videoW*20); 
 	
-	fbi->x =40;
-	fbi->y =8;
+	//fbi->x = fbi->y = 6;
 	//blit_char(fbi, 'O');
 	//blit_char(fbi, 'K');
-	//fb_puts(fbi, "MagicSD Qi USB v1.0");
 	
-	for (val=30;val<256;val++) {
-		//if (val % 85 == 0) {
-		//	fbi->x =40;
-		//	fbi->y++;
-		//}
-		fb_putc(fbi, 0xff & val);
-	}
+	//for (val=30;val<256;val++) {
+	//	fb_putc(fbi, val);
+	//}
 
 	writel(0x00000113,S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
 	//ou 0x13 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16)
+
+	fbi->x = fbi->y = 0;
+	
+	fb_puts(fbi, "MagicSD Qi USB v1.0\n");
+	
+	//fb_puthex(fbi,fbi->x);
 	
 	//led_blink(0,1);
 	//delay(10);
@@ -518,4 +522,11 @@ fb_init(struct fbinfo *fbi)
 	//memset16(fbi->fb + (2*videoW), BLACK, videoW); 
 //	Output("Video buffer at %p sx=%d sy=%d mx=%d my=%d"
 //		   , fbi->fb, fbi->scrx, fbi->scry, fbi->maxx, fbi->maxy);
+
+	return fbi;
+}
+
+struct fbinfo * fb_get(void)
+{
+	return &fbi_store;
 }

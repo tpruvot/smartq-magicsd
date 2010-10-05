@@ -31,12 +31,16 @@
 #include <s3c6410.h>
 #include "usbd-otg-hs.h"
 
+#include "smartq.h"
+#include "fbwrite.h"
+
 #undef USB_OTG_DEBUG_SETUP
 #ifdef USB_OTG_DEBUG_SETUP
 #define DBG_SETUP0(fmt, args...) printf("[%s:%d] " fmt, __FUNCTION__, __LINE__, ##args)
 #define DBG_SETUP1(fmt, args...) printf("\t" fmt, ##args)
 #define DBG_SETUP2(fmt, args...) printf(fmt, ##args)
 #else
+#define printf(fmt, args...) fb_printf(fbi, fmt, ##args)
 #define DBG_SETUP0(fmt, args...) do { } while (0)
 #define DBG_SETUP1(fmt, args...) do { } while (0)
 #define DBG_SETUP2(fmt, args...) do { } while (0)
@@ -63,6 +67,8 @@ u16 config_value;
 int s3c_receive_done = 0;
 unsigned int s3c_usbd_dn_addr;
 unsigned int s3c_usbd_dn_cnt;
+
+static struct fbinfo *fbi = 0;
 
 USB_OPMODE	op_mode = USB_CPU;
 USB_SPEED	speed = USB_HIGH;
@@ -252,9 +258,9 @@ const u8 config_full[] =
 	0x01,	/*  5 value to use to select configuration */
 	0x00,	/*  6 index of string desc */
 		/*  7 same as configuration desc */
-	CONF_ATTR_DEFAULT|CONF_ATTR_SELFPOWERED,  
+	CONF_ATTR_DEFAULT|CONF_ATTR_SELFPOWERED,
 	0x19,	/*  8 same as configuration desc */
-	
+
 };
 
 const u8 config_full_total[] =
@@ -275,9 +281,9 @@ const u8 config_high[] =
 	0x01,	/*  5 value to use to select configuration */
 	0x00,	/*  6 index of string desc */
 		/*  7 same as configuration desc */
-	CONF_ATTR_DEFAULT|CONF_ATTR_SELFPOWERED,  
+	CONF_ATTR_DEFAULT|CONF_ATTR_SELFPOWERED,
 	0x19,	/*  8 same as configuration desc */
-	
+
 };
 
 const u8 config_high_total[] =
@@ -319,16 +325,16 @@ u8 test_pkt [TEST_PKT_SIZE] = {
 
 void s3c_usb_init_phy(void)
 {
-	writel(0x0, S3C_OTG_PHYPWR);
+	writel(0x0, S3C_OTG_PHYPWR); //OPHYPWR
 #ifdef SMARTQ
-	writel(0x02, S3C_OTG_PHYCTRL);
+	writel(0x02, S3C_OTG_PHYCTRL); //OPHYCLK Ref CLK at 12Mhz
 #else
-	writel(0x20, S3C_OTG_PHYCTRL);
+	writel(0x20, S3C_OTG_PHYCTRL); //48Mhz
 #endif
-	writel(0x1, S3C_OTG_RSTCON);
-	udelay(10);
+	writel(0x3, S3C_OTG_RSTCON); //ORSTCON
+	udelay(20);
 	writel(0x0, S3C_OTG_RSTCON);
-	udelay(10);
+	udelay(20);
 }
 
 void s3c_usb_core_soft_reset(void)
@@ -350,12 +356,11 @@ int s3c_usb_wait_cable_insert(void)
 	u32 timeout = 1000000;
 
 	while(timeout--) {
-	    tmp = readl(S3C_OTG_GOTGCTL);
-
-	    if (tmp & (B_SESSION_VALID|A_SESSION_VALID)) {
-		    printf("OTG cable Connected!\n");
-		    return 0;
-	    }
+		tmp = readl(S3C_OTG_GOTGCTL);
+		if (tmp & (B_SESSION_VALID|A_SESSION_VALID)) {
+			printf("OTG cable Connected!\n");
+			return 0;
+		}
 	}
 
 	printf("OTG cable not inserted into the connector!\n");
@@ -419,6 +424,8 @@ int s3c_usbctl_init(void)
 {
 	int ret;
 	u8 ucMode;
+	led_set(2);
+	fbi = fb_get();
 
 	DBG_SETUP0("USB Control Init\n");
 	OTHERS_REG |= (1<<16);	/*unmask usb signal */
@@ -431,9 +438,12 @@ int s3c_usbctl_init(void)
 	s3c_usb_core_soft_reset();
 	ret = s3c_usb_wait_cable_insert();
 	if(ret)
-	    return ret;
+		return ret;
+
 	s3c_usb_init_core();
 	s3c_usb_check_current_mode(&ucMode);
+
+	fb_printf(fbi, "ucMode: %d\n", ucMode);
 
 	if (ucMode == INT_DEV_MODE) {
 		s3c_usb_set_soft_disconnect();
@@ -472,9 +482,10 @@ void s3c_usb_print_pkt(u8 *pt, u8 count)
 
 void s3c_usb_verify_checksum(void)
 {
-	u8 *cs_start, *cs_end;
-	u16 dnCS;
+	u8 *cs_start;
+	u8 *cs_end;
 	u16 checkSum;
+	u32 dnCS;
 
 	printf("Checksum is being calculated.");
 
@@ -483,18 +494,28 @@ void s3c_usb_verify_checksum(void)
 	cs_end = (u8*)(otg.dn_addr+otg.dn_filesize-10);
 	checkSum = 0;
 	while(cs_start < cs_end) {
-		checkSum += *cs_start++;
-		if(((u32)cs_start&0xfffff)==0) printf(".");
+		checkSum += *(cs_start++);
+		if(((u32)cs_start & (u32)0xffff)==(u32)0xffff) printf(".");
 	}
 
-	dnCS = *(u16 *)cs_end;
+	//ARM memory cant be accessed on even bytes
+	if ((u32) cs_end & 1) {
+		cs_end--;
+		dnCS = *((u32 *)cs_end) & 0x00ffff00;
+		dnCS >>= 8;
+	} else
+		dnCS = *((u16 *)cs_end);
+
+	printf("\n%x",dnCS);
 
 	if (checkSum == dnCS)
 	{
+		led_set(1);
 		printf("\nChecksum O.K.\n");
 	}
 	else
 	{
+		led_set(2);
 		printf("\nChecksum Value => MEM:%x DNW:%x\n",checkSum,dnCS);
 		printf("Checksum failed.\n\n");
 	}
@@ -895,7 +916,7 @@ void s3c_usb_ep0_int_hndlr(void)
 			break;
 		}
 	}
-	
+
 	s3c_usb_set_inep_xfersize(EP_TYPE_CONTROL, 1, otg.ctrl_max_pktsize);
 
 	if(otg.speed == USB_HIGH) {
@@ -914,35 +935,35 @@ void s3c_usb_set_otherspeed_conf_desc(u32 length)
 	/* Standard device descriptor */
 	if (otg.speed == USB_HIGH)
 	{
-	    if (length ==9)
-	    {
+		if (length ==9)
+		{
 		s3c_usb_set_inep_xfersize(EP_TYPE_CONTROL, 1, 9);
 			writel(EPEN_CNAK_EP0_64, S3C_OTG_DIEPCTL0);
 			s3c_usb_write_ep0_fifo(((u8 *)&config_full)+0, 9);
 		}
-	    else if(length ==32)
+		else if(length ==32)
 		{
 		s3c_usb_set_inep_xfersize(EP_TYPE_CONTROL, 1, 32);
 			writel(EPEN_CNAK_EP0_64, S3C_OTG_DIEPCTL0);
 			s3c_usb_write_ep0_fifo(((u8 *)&config_full_total)+0, 32);
 
-	    }
+		}
 		otg.ep0_state = EP0_STATE_INIT;
 	}
 	else
 	{
-	    if (length ==9)
-	    {
+		if (length ==9)
+		{
 		s3c_usb_set_inep_xfersize(EP_TYPE_CONTROL, 1, 8);
 			writel(EPEN_CNAK_EP0_8, S3C_OTG_DIEPCTL0);
 			s3c_usb_write_ep0_fifo(((u8 *)&config_high)+0, 8);
 		}
-	    else if(length ==32)
+		else if(length ==32)
 		{
 		s3c_usb_set_inep_xfersize(EP_TYPE_CONTROL, 1, 8);
 			writel(EPEN_CNAK_EP0_64, S3C_OTG_DIEPCTL0);
 			s3c_usb_write_ep0_fifo(((u8 *)&config_high_total)+0, 8);
-	    }
+		}
 		otg.ep0_state = EP0_STATE_GD_OTHER_SPEED_HIGH_1;
 	}
 }
@@ -966,7 +987,7 @@ void s3c_usb_transfer_ep0(void)
 		DBG_SETUP1("EP0_STATE_GD_DEV_0 :");
 		if (otg.speed == USB_HIGH) {
 			DBG_SETUP1("High Speed\n");
-			
+
 			/*ep0 enable, clear nak, next ep0, max 64byte */
 			writel(EPEN_CNAK_EP0_64, S3C_OTG_DIEPCTL0);
 			if (otg.req_length < DEVICE_DESC_SIZE) {
@@ -1438,7 +1459,7 @@ void s3c_usb_int_bulkin(void)
 		/*ep3 enable, clear nak, bulk, usb active, next ep3, max pkt 64*/
 		writel(1u<<31|1<<26|2<<18|1<<15|otg.bulkin_max_pktsize<<0,
 			S3C_OTG_DIEPCTL_IN);
-		
+
 		s3c_usb_write_in_fifo(bulkin_buf, otg.bulkin_max_pktsize);
 
 		otg.up_ptr += otg.bulkin_max_pktsize;
@@ -1449,12 +1470,12 @@ void s3c_usb_int_bulkin(void)
 		/*ep3 enable, clear nak, bulk, usb active, next ep3, max pkt 64*/
 		writel(1u<<31|1<<26|2<<18|1<<15|otg.bulkin_max_pktsize<<0,
 			S3C_OTG_DIEPCTL_IN);
-		
+
 		s3c_usb_write_in_fifo(bulkin_buf, remain_cnt);
 
 		otg.up_ptr += remain_cnt;
 
-	} else { /*remain_cnt = 0*/ 
+	} else { /*remain_cnt = 0*/
 		writel((DEPCTL_SNAK|DEPCTL_BULK_TYPE), S3C_OTG_DIEPCTL_IN);
 	}
 }
@@ -1479,7 +1500,7 @@ void s3c_usb_upload_start(void)
 			(*((u8 *)(tmp_buf+5))<<8)+
 			(*((u8 *)(tmp_buf+6))<<16)+
 			(*((u8 *)(tmp_buf+7))<<24);
-		
+
 		otg.up_ptr=(u8 *)otg.up_addr;
 		DBG_BULK1("UploadAddress : 0x%x, UploadSize: %d\n",
 			otg.up_addr, otg.up_size);
@@ -1513,7 +1534,7 @@ void s3c_usb_upload_start(void)
 			if(remainder != 0) {
 				pktcnt += 1;
 			}
-			
+
 			if (pktcnt > 1023) {
 				s3c_usb_set_inep_xfersize(EP_TYPE_BULK, 1023,
 					(otg.bulkin_max_pktsize*1023));
@@ -1538,13 +1559,17 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 	s3c_usb_read_out_fifo((u8 *)tmp_buf, 8);
 	DBG_BULK1("downloadFileSize==0, 1'st BYTE_READ_CNT_REG : %x\n",
 		fifo_cnt_byte);
-	
-    s3c_usbd_dn_addr =
-        *((u8 *)(tmp_buf))+
+
+	s3c_usbd_dn_addr =
+		*((u8 *)(tmp_buf))+
 		(*((u8 *)(tmp_buf+1))<<8)+
 		(*((u8 *)(tmp_buf+2))<<16)+
 		(*((u8 *)(tmp_buf+3))<<24);
-    s3c_usbd_dn_cnt =
+
+	//prevent even addresses
+	if (s3c_usbd_dn_addr & 1) {s3c_usbd_dn_addr++}
+
+	s3c_usbd_dn_cnt =
 		*((u8 *)(tmp_buf+4))+
 		(*((u8 *)(tmp_buf+5))<<8)+
 		(*((u8 *)(tmp_buf+6))<<16)+
@@ -1553,7 +1578,7 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 	otg.dn_filesize=s3c_usbd_dn_cnt;
 
 	otg.dn_ptr=(u8 *)otg.dn_addr;
-	DBG_BULK1("downloadAddress : 0x%x, downloadFileSize: %x\n",
+	DBG_BULK1("downloadAddress : %x, downloadFileSize: %d\n",
 		otg.dn_addr, otg.dn_filesize);
 
 	/* The first 8-bytes are deleted.*/
@@ -1581,7 +1606,7 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 		if(remain_cnt != 0) {
 			pkt_cnt += 1;
 		}
-		
+
 		if (pkt_cnt > 1023) {
 			s3c_usb_set_outep_xfersize(EP_TYPE_BULK, 1023,
 				(otg.bulkout_max_pktsize*1023));
@@ -1589,7 +1614,7 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 			s3c_usb_set_outep_xfersize(EP_TYPE_BULK, pkt_cnt,
 				(otg.dn_filesize-otg.bulkout_max_pktsize));
 		}
-		
+
 		/*ep3 enable, clear nak, bulk, usb active, next ep3, max pkt 64*/
 		writel(1u<<31|1<<26|2<<18|1<<15|otg.bulkout_max_pktsize<<0,
 			S3C_OTG_DOEPCTL_OUT);
@@ -1612,7 +1637,7 @@ void s3c_usb_download_continue(u32 fifo_cnt_byte)
 
 		/* USB format : addr(4)+size(4)+data(n)+cs(2) */
 		if (((u32)otg.dn_ptr - otg.dn_addr) >= (otg.dn_filesize - 8)) {
-			printf("Download Done!! Download Address: 0x%x, Download Filesize:0x%x\n",
+			printf("\nDownload Done!! Download Address: %x, Download Filesize:%d\n",
 				otg.dn_addr, (otg.dn_filesize-10));
 
 #ifdef USB_CHECKSUM_EN
@@ -1807,7 +1832,6 @@ void s3c_usb_set_descriptors(void)
 	otg.desc.config.wTotalLengthL=CONFIG_DESC_TOTAL_SIZE;
 	otg.desc.config.wTotalLengthH=0;
 	otg.desc.config.bNumInterfaces=1;
-/* dbg	  descConf.bConfigurationValue=2; // why 2? There's no reason.*/
 	otg.desc.config.bConfigurationValue=1;
 	otg.desc.config.iConfiguration=0;
 	otg.desc.config.bmAttributes=CONF_ATTR_DEFAULT|CONF_ATTR_SELFPOWERED; /* bus powered only.*/
@@ -1882,7 +1906,7 @@ void s3c_usb_set_opmode(USB_OPMODE mode)
 	writel(INT_RESUME|INT_OUT_EP|INT_IN_EP|INT_ENUMDONE|
 		INT_RESET|INT_SUSPEND|INT_RX_FIFO_NOT_EMPTY,
 		S3C_OTG_GINTMSK); /*gint unmask */
-	
+
 	writel(MODE_SLAVE|BURST_SINGLE|GBL_INT_UNMASK, S3C_OTG_GAHBCFG);
 
 	s3c_usb_set_outep_xfersize(EP_TYPE_BULK, 1, otg.bulkout_max_pktsize);
@@ -1927,7 +1951,7 @@ void s3c_usb_reset(void)
 int s3c_usb_set_init(void)
 {
 	u32 status;
-	
+
 	status = readl(S3C_OTG_DSTS); /* System status read */
 
 	/* Set if Device is High speed or Full speed */
@@ -1936,7 +1960,7 @@ int s3c_usb_set_init(void)
 		s3c_usb_set_max_pktsize(USB_HIGH);
 	}
 	else if(((status&0x6) >>1) == USB_FULL) {
-		DBG_SETUP1("Full Speed Detec tion\n");
+		DBG_SETUP1("Full Speed Detection\n");
 		s3c_usb_set_max_pktsize(USB_FULL);
 	}
 	else {
@@ -1967,7 +1991,7 @@ void s3c_usb_pkt_receive(void)
 	} else if ((rx_status & (0xf<<17)) == OUT_PKT_RECEIVED) {
 		fifo_cnt_byte = (rx_status & 0x7ff0)>>4;
 		DBG_SETUP1("OUT_PKT_RECEIVED\n");
-		
+
 		if((rx_status & BULK_OUT_EP)&&(fifo_cnt_byte)) {
 			s3c_usb_int_bulkout(fifo_cnt_byte);
 			if( otg.op_mode == USB_CPU )

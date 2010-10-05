@@ -87,16 +87,16 @@ void printdec(int n)
 {
 	int d[] = {
 		1 * 1000 * 1000 * 1000,
-			 100 * 1000 * 1000,
-			  10 * 1000 * 1000,
-			   1 * 1000 * 1000,
-				100 * 1000,
-				 10 * 1000,
-				  1 * 1000,
+		     100 * 1000 * 1000,
+		      10 * 1000 * 1000,
+		       1 * 1000 * 1000,
+			    100 * 1000,
+			     10 * 1000,
+			      1 * 1000,
 				   100,
-					10,
-					 1,
-					 0
+				    10,
+				     1,
+				     0
 	};
 	int flag = 0;
 	int div = 0;
@@ -450,18 +450,6 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	return str-buf;
 }
 
-int vsnprintf2(char * buf, int len, const char *fmt, ...)
-{
-	va_list args;
-	int i;
-	
-	va_start(args, fmt);
-	i = vsprintf(buf,fmt,args);
-	va_end(args);
-
-	return i;
-}
-
 int sprintf(char * buf, const char *fmt, ...)
 {
 	va_list args;
@@ -476,7 +464,7 @@ int sprintf(char * buf, const char *fmt, ...)
 
 int printf(const char *fmt, ...)
 {
-	char buf[256];
+    char buf[256];
 	va_list args;
 	int i;
 

@@ -44,15 +44,6 @@
 #define CopyMMCtoMem(a,b,c,e) (((u8(*)(int, unsigned int, unsigned short, unsigned int*, u8)) \
 	(*((unsigned int*)0x0C004008)))(CHANNEL,a,b,c,e))
 
-
-/* In this file gpio variable has this format :
-
-   [31:4] 0xFFF0 : GPIO Channel, GPN = ('N'-'A') 
-    [3:0] 0x000F : GPIO PIN (0-15)
-
-*/
-
-
 /* LEDs are on GPN8 and GPN9 */
 #if SMARTQ == 5
 #define GPIO_LED_0 (('N'-'A')*16 + 8)
@@ -82,6 +73,8 @@ static unsigned short gbase[] =
 	 0x140, 0x160, 0x180, }; /* O P Q */
 
 static unsigned long gpio_base = 0x7f008000;
+
+static struct fbinfo *fbi = 0;
 
 #define readl(a) (*(volatile unsigned int *)(a))
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
@@ -121,31 +114,6 @@ static int gpio_direction_set(int gpio, int out)
 	return 0;
 }
 
-int gpio_direction_get(int gpio)
-{
-	int dir=-1, decal;
-	int group = gpio >> 4, sub = gpio % 16;
-	unsigned char mask = 0b0011;
-	unsigned int regconf = 0, val;
-
-	regconf = gpio_base + gbase[group];
-	if(gcsz[group] == 4) {
-		mask = 0b1111;
-		if(sub >= 8) regconf += 4;
-	}
-
-	val = readl(regconf);
-	if(4 == gcsz[group]  &&  sub >= 8)
-		decal = gcsz[group] * (sub-8);
-	else
-		decal = gcsz[group] * sub;
-	
-	val &= (mask) << decal;
-	dir = val >> decal;
-
-	return dir;
-}
-
 /* ret : high is 1, low is 0 */
 int gpio_set_value(int gpio, int dat)
 {
@@ -160,10 +128,11 @@ int gpio_set_value(int gpio, int dat)
 	else    val &= ~(1<<sub);
 
 	writel(val, regdat);
+
 	return 0;
 }
 
-void gpio_direction_output(int gpio, int dat)
+static void gpio_direction_output(int gpio, int dat)
 {
 	gpio_direction_set(gpio, 1);
 	gpio_set_value(gpio, dat);
@@ -182,22 +151,12 @@ void led_set(int flag)
 
 void led_blink(int l1, int l2)
 {
-	int i = 2;
+	int i = 5;
 	while(i--) {
 		led_set(l1);
-		udelay(300000);
+		udelay(1000000);
 		led_set(l2);
-		udelay(300000);
-	}
-}
-
-void led_tilt(int led) {
-	int i = 2;
-	while(i--) {
-		led_set(led);
-		udelay(50000);
-		led_set(0);
-		udelay(100000);
+		udelay(1000000);
 	}
 }
 
@@ -253,22 +212,18 @@ int battery_probe(void)
 	return 0;
 }
 
-int is_this_board_smartq(void)
+static int is_this_board_smartq(void)
 {
-	struct fbinfo *fbi = 0;
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
-	fb_init(fbi);
-	fb_puts(fbi,"abcdef");
-	fb_puts(fbi,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-	led_blink(1, 0);
-	//fb_clear(fbi);
-	led_blink(0, 0);
+	led_set(3);
 	return 1;
 }
 
 static void putc_smdk6410(char c)
 {
+	//if (fbi!=0)
+	//	fb_putc(fbi, c);
 	serial_putc_s3c64xx(SMDK6410_DEBUG_UART, c);
 }
 
@@ -292,27 +247,34 @@ int sd_card_block_read_smartq(unsigned char *buf, unsigned long start512, int bl
 	return blocks512;
 }
 
-static int usb_inited;
+static int usb_inited=0;
 static int usb_init(void)
 {
+	fbi = fb_init();
+
 	usb_inited = s3c_usbctl_init();
+
+	//fb_clear(fbi);
+	fb_printf(fbi,"FB: %x ",(uint32)fbi->fb);
+	led_set(0);
+
 	return usb_inited;
 }
 
 static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 {
-    (void)buf;
-    (void)start512;
-    (void)blocks512;
-    void (*usb_boot)(void);
+	(void)buf;
+	(void)start512;
+	(void)blocks512;
+	void (*usb_boot)(void);
 
-    if(usb_inited)
-        return usb_inited;
+	if(usb_inited != 0) //0:ok
+		return usb_inited;
 
 	s3c_receive_done = 0;
 	s3c_usbd_dn_cnt = 0;
 
-	printf("Waiting for DN to transmit data\n");
+	fb_printf(fbi, "Waiting for DN to transmit data\n");
 
 	while (1) {
 		if (S3C_USBD_DETECT_IRQ()) {
@@ -334,12 +296,13 @@ static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 	/* when operation is done, usbd must be stopped */
 	s3c_usb_stop();
 
-    if(s3c_usbd_dn_cnt) {
-        usb_boot = (void*)s3c_usbd_dn_addr;
-        usb_boot();
-    }
+	if(s3c_usbd_dn_cnt) {
+		usb_boot = (void*)s3c_usbd_dn_addr;
+		fb_printf(fbi, "Booting...\n");
+		usb_boot();
+	}
 
-    return -1;
+	return -1;
 }
 
 static const struct board_variant board_variants[] = {

@@ -28,19 +28,17 @@ HOSTCC	= gcc
 
 export CROSS_COMPILE AD LD CC OBJCOPY OBJDUMP MKUDFU
 
-#######################################################################################################
 # For kernel-wrap (Tanguy : Dont use, or fix it  NEVER GOT A WORKING IMAGE for the moment with that...)
 
-INITRD=initrd.gz
-export INITRD
+#INITRD=initrd
+#export INITRD 
 
-# kernel src path
 KERNEL=/var/git/mer-smartq-kernel
 export KERNEL
 
 KERNEL_CMDLINE="rootwait root=/dev/ram debug nosplash"
 
 #to force a kernel containing an initrd (set in kernel .config)
-KERNEL_IMAGE=/var/git/smartq/qi-smartq/zImage
+#KERNEL_IMAGE=/var/git/smartq/qi-smartq/zImage
 KERNEL_IMAGE=/var/git/mer-smartq-kernel/zImageSD
 export KERNEL_IMAGE

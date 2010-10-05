@@ -5,6 +5,8 @@
 # (c) 2004,2006 Ben Dooks, Ben Dooks <ben-smdk2440@fluff.org>
 #
 
+HOSTCC ?= gcc
+
 export VERSION=0.21
 
 CFLAGS=-O2 -Wall -g -lusb

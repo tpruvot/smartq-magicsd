@@ -23,7 +23,7 @@ install-smartq-qi.sh : tested ok on a SDHC 8GB
 NEWS :
 
 qi : display controller initialized, we can now display 16 bpp data
-     some problems with screen position, and text printf functions... todo
+     LCD printf enabled :)
 
 --
 
@@ -45,7 +45,6 @@ in order to make a bootable SD card.
 
 Qi
 ==
-
 Qi (named by Alan Cox on Openmoko kernel list) is a minimal bootloader that
 "breathes life" into Linux.  Its goal is to stay close to the minimum needed
 to "load" and then "boot" Linux -- no boot menus, additional peripheral init
