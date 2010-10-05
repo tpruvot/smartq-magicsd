@@ -141,6 +141,16 @@ void *memset(void *s, int c, size_t n)
 	return s;
 }
 
+void *memset16(void *s, unsigned short c, unsigned int n)
+{
+	volatile u16* p = s;
+
+	while (n--)
+		*p++ = c;
+
+	return s;
+}
+
 void delay(unsigned long n)
 {
 	while(n--)

@@ -35,6 +35,8 @@
 #include <usbd-otg-hs.h>
 #include <common.h>
 
+#include "fbwrite.h"
+
 #define SMDK6410_DEBUG_UART 0
 
 #define CHANNEL ((*(volatile u32*)0x0C003FEC == 0x7c300000) ? 1 : 0)
@@ -111,7 +113,7 @@ static int gpio_direction_set(int gpio, int out)
 }
 
 /* ret : high is 1, low is 0 */
-static int gpio_set_value(int gpio, int dat)
+int gpio_set_value(int gpio, int dat)
 {
 	int group = gpio >> 4, sub = gpio % 16;
 	unsigned int regdat = 0, val;
@@ -210,8 +212,12 @@ int battery_probe(void)
 
 static int is_this_board_smartq(void)
 {
+	struct fbinfo *fbi = 0;
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
+	fb_init(fbi);
+	//fb_clear(fbi);
+	led_blink(1, 0);
 	return 1;
 }
 
