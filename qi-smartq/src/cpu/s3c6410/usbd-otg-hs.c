@@ -325,13 +325,13 @@ u8 test_pkt [TEST_PKT_SIZE] = {
 
 void s3c_usb_init_phy(void)
 {
-	writel(0x0, S3C_OTG_PHYPWR);
+	writel(0x0, S3C_OTG_PHYPWR); //OPHYPWR
 #ifdef SMARTQ
-	writel(0x02, S3C_OTG_PHYCTRL);
+	writel(0x02, S3C_OTG_PHYCTRL); //OPHYCLK Ref CLK at 12Mhz
 #else
-	writel(0x20, S3C_OTG_PHYCTRL);
+	writel(0x20, S3C_OTG_PHYCTRL); //48Mhz
 #endif
-	writel(0x1, S3C_OTG_RSTCON);
+	writel(0x3, S3C_OTG_RSTCON); //ORSTCON
 	udelay(20);
 	writel(0x0, S3C_OTG_RSTCON);
 	udelay(20);
@@ -356,12 +356,11 @@ int s3c_usb_wait_cable_insert(void)
 	u32 timeout = 1000000;
 
 	while(timeout--) {
-	    tmp = readl(S3C_OTG_GOTGCTL);
-
-	    if (tmp & (B_SESSION_VALID|A_SESSION_VALID)) {
-		    printf("OTG cable Connected!\n");
-		    return 0;
-	    }
+		tmp = readl(S3C_OTG_GOTGCTL);
+		if (tmp & (B_SESSION_VALID|A_SESSION_VALID)) {
+			printf("OTG cable Connected!\n");
+			return 0;
+		}
 	}
 
 	printf("OTG cable not inserted into the connector!\n");
@@ -427,7 +426,6 @@ int s3c_usbctl_init(void)
 	u8 ucMode;
 	led_set(2);
 	fbi = fb_get();
-	fb_printf(fbi, "Speed: %d, ", speed);
 
 	DBG_SETUP0("USB Control Init\n");
 	OTHERS_REG |= (1<<16);	/*unmask usb signal */
@@ -441,8 +439,11 @@ int s3c_usbctl_init(void)
 	ret = s3c_usb_wait_cable_insert();
 	if(ret)
 	    return ret;
+	
 	s3c_usb_init_core();
 	s3c_usb_check_current_mode(&ucMode);
+
+	fb_printf(fbi, "ucMode: %d\n", ucMode);
 
 	if (ucMode == INT_DEV_MODE) {
 		s3c_usb_set_soft_disconnect();
@@ -481,9 +482,10 @@ void s3c_usb_print_pkt(u8 *pt, u8 count)
 
 void s3c_usb_verify_checksum(void)
 {
-	u8 *cs_start, *cs_end;
-	u16 dnCS;
+	u8 *cs_start;
+	u8 *cs_end;
 	u16 checkSum;
+	u32 dnCS;
 
 	printf("Checksum is being calculated.");
 
@@ -492,18 +494,28 @@ void s3c_usb_verify_checksum(void)
 	cs_end = (u8*)(otg.dn_addr+otg.dn_filesize-10);
 	checkSum = 0;
 	while(cs_start < cs_end) {
-		checkSum += *cs_start++;
-		if(((u32)cs_start&0xfffff)==0) printf(".");
+		checkSum += *(cs_start++);
+		if(((u32)cs_start & (u32)0xffff)==(u32)0xffff) printf(".");
 	}
 
-	dnCS = *(u16 *)cs_end;
+	//ARM memory cant be accessed on even bytes
+	if ((u32) cs_end & 1) {
+		cs_end--;
+		dnCS = *((u32 *)cs_end) & 0x00ffff00;
+		dnCS >>= 8;
+	} else
+		dnCS = *((u16 *)cs_end);
 
+	printf("\n%x",dnCS);
+	
 	if (checkSum == dnCS)
 	{
+		led_set(1);
 		printf("\nChecksum O.K.\n");
 	}
 	else
 	{
+		led_set(2);
 		printf("\nChecksum Value => MEM:%x DNW:%x\n",checkSum,dnCS);
 		printf("Checksum failed.\n\n");
 	}
@@ -1562,7 +1574,7 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 	otg.dn_filesize=s3c_usbd_dn_cnt;
 
 	otg.dn_ptr=(u8 *)otg.dn_addr;
-	DBG_BULK1("downloadAddress : 0x%x, downloadFileSize: %x\n",
+	DBG_BULK1("downloadAddress : %x, downloadFileSize: %d\n",
 		otg.dn_addr, otg.dn_filesize);
 
 	/* The first 8-bytes are deleted.*/
@@ -1621,7 +1633,7 @@ void s3c_usb_download_continue(u32 fifo_cnt_byte)
 
 		/* USB format : addr(4)+size(4)+data(n)+cs(2) */
 		if (((u32)otg.dn_ptr - otg.dn_addr) >= (otg.dn_filesize - 8)) {
-			printf("Download Done!! Download Address: 0x%x, Download Filesize:0x%x\n",
+			printf("\nDownload Done!! Download Address: %x, Download Filesize:%d\n",
 				otg.dn_addr, (otg.dn_filesize-10));
 
 #ifdef USB_CHECKSUM_EN
