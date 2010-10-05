@@ -1567,7 +1567,7 @@ void s3c_usb_download_start(u32 fifo_cnt_byte)
 		(*((u8 *)(tmp_buf+3))<<24);
 
 	//prevent even addresses
-	if (s3c_usbd_dn_addr & 1) {s3c_usbd_dn_addr++}
+	if (s3c_usbd_dn_addr & 1) {s3c_usbd_dn_addr++;}
 
 	s3c_usbd_dn_cnt =
 		*((u8 *)(tmp_buf+4))+
