@@ -354,13 +354,12 @@ void gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
 }
 */
 
-// Initialize an fbi structure and display.
-// Initialize an fbi structure and display.
+// Initialize fbi structure and display.
 struct fbinfo * fb_init(void)
 {
 	struct fbinfo * fbi;
 	uint32 val;
-	uint32 FBMEM = 0x5d000000+0xbb800; //uint16 FBMEM[videoW*videoH*BPP] 0x000bb800;
+	uint32 FBMEM = 0x5d000000;
 	
 	//memset(&fbi_store, 0, sizeof(fbi_store));
 	fbi = &fbi_store;
@@ -450,21 +449,20 @@ struct fbinfo * fb_init(void)
 	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
 	
-	writel(0x00130909,S3C_VIDTCON0); //Synch Pos V
+	writel(0x00240909,S3C_VIDTCON0); //Synch Pos V
 	writel(0x005f6276,S3C_VIDTCON1); //Synch Pos H
 	
 	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
 	writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 
-	//writel(0x00010015,S3C_WINCON0);
+	//writel(0x00010015,S3C_WINCON0); //565 RGB
 	writel(0x00000000,S3C_WINCON0);
-	//writel(0x00010015,S3C_WINCON1); 565 RGB
 	writel(0x00010019,S3C_WINCON1); //1555 ARGB
 	writel(0x00000000,S3C_WINCON2);
 	writel(0x00000000,S3C_WINCON3);
 	writel(0x00000000,S3C_WINCON4);
 	
-	writel(0x000810,S3C_VIDOSD1A); //X:Y LeftTop
+	writel(0x000000,S3C_VIDOSD1A); //X:Y LeftTop
 	//writel(0x0efb1f,S3C_VIDOSD1B); //479:799
 	writel(0x18f9df,S3C_VIDOSD1B); //X:Y RightBot 799:479
 	writel(0x000000,S3C_VIDOSD1C);

@@ -253,29 +253,28 @@ static int usb_init(void)
 	fbi = fb_init();
 
 	usb_inited = s3c_usbctl_init();
-	
+
 	//fb_clear(fbi);
-	fb_printf(fbi,"%x %d ",(uint32)fbi, usb_inited);
+	fb_printf(fbi,"FB: %x ",(uint32)fbi->fb);
 	led_set(0);
-	
+
 	return usb_inited;
 }
 
 static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 {
-    (void)buf;
-    (void)start512;
-    (void)blocks512;
-    void (*usb_boot)(void);
+	(void)buf;
+	(void)start512;
+	(void)blocks512;
+	void (*usb_boot)(void);
 
-    if(usb_inited)
-        return usb_inited;
+	if(usb_inited != 0) //0:ok
+		return usb_inited;
 
 	s3c_receive_done = 0;
 	s3c_usbd_dn_cnt = 0;
 
-	//printf
-	//fb_puts(fbi, (uchar*)"Waiting for DN to transmit data\n");
+	fb_printf(fbi, "Waiting for DN to transmit data\n");
 
 	while (1) {
 		if (S3C_USBD_DETECT_IRQ()) {
@@ -297,12 +296,13 @@ static int usb_read(unsigned char * buf, unsigned long start512, int blocks512)
 	/* when operation is done, usbd must be stopped */
 	s3c_usb_stop();
 
-    if(s3c_usbd_dn_cnt) {
-        usb_boot = (void*)s3c_usbd_dn_addr;
-        usb_boot();
-    }
+	if(s3c_usbd_dn_cnt) {
+		usb_boot = (void*)s3c_usbd_dn_addr;
+		fb_printf(fbi, "Booting...\n");
+		usb_boot();
+	}
 
-    return -1;
+	return -1;
 }
 
 static const struct board_variant board_variants[] = {

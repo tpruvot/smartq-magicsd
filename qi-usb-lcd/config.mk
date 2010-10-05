@@ -30,8 +30,8 @@ export CROSS_COMPILE AD LD CC OBJCOPY OBJDUMP MKUDFU
 
 # For kernel-wrap (Tanguy : Dont use, or fix it  NEVER GOT A WORKING IMAGE for the moment with that...)
 
-INITRD=initrd
-export INITRD 
+#INITRD=initrd
+#export INITRD 
 
 KERNEL=/var/git/mer-smartq-kernel
 export KERNEL
@@ -39,6 +39,6 @@ export KERNEL
 KERNEL_CMDLINE="rootwait root=/dev/ram debug nosplash"
 
 #to force a kernel containing an initrd (set in kernel .config)
-KERNEL_IMAGE=/var/git/smartq/qi-smartq/zImage
+#KERNEL_IMAGE=/var/git/smartq/qi-smartq/zImage
 KERNEL_IMAGE=/var/git/mer-smartq-kernel/zImageSD
 export KERNEL_IMAGE
