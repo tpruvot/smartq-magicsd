@@ -31,12 +31,16 @@
 #include <s3c6410.h>
 #include "usbd-otg-hs.h"
 
+#include "smartq.h"
+#include "fbwrite.h"
+
 #undef USB_OTG_DEBUG_SETUP
 #ifdef USB_OTG_DEBUG_SETUP
 #define DBG_SETUP0(fmt, args...) printf("[%s:%d] " fmt, __FUNCTION__, __LINE__, ##args)
 #define DBG_SETUP1(fmt, args...) printf("\t" fmt, ##args)
 #define DBG_SETUP2(fmt, args...) printf(fmt, ##args)
 #else
+#define printf(fmt, args...) fb_printf(fbi, fmt, ##args)
 #define DBG_SETUP0(fmt, args...) do { } while (0)
 #define DBG_SETUP1(fmt, args...) do { } while (0)
 #define DBG_SETUP2(fmt, args...) do { } while (0)
@@ -63,6 +67,8 @@ u16 config_value;
 int s3c_receive_done = 0;
 unsigned int s3c_usbd_dn_addr;
 unsigned int s3c_usbd_dn_cnt;
+
+static struct fbinfo *fbi = 0;
 
 USB_OPMODE	op_mode = USB_CPU;
 USB_SPEED	speed = USB_HIGH;
@@ -326,9 +332,9 @@ void s3c_usb_init_phy(void)
 	writel(0x20, S3C_OTG_PHYCTRL);
 #endif
 	writel(0x1, S3C_OTG_RSTCON);
-	udelay(10);
+	udelay(20);
 	writel(0x0, S3C_OTG_RSTCON);
-	udelay(10);
+	udelay(20);
 }
 
 void s3c_usb_core_soft_reset(void)
@@ -419,6 +425,9 @@ int s3c_usbctl_init(void)
 {
 	int ret;
 	u8 ucMode;
+	led_set(2);
+	fbi = fb_get();
+	fb_printf(fbi, "Speed: %d, ", speed);
 
 	DBG_SETUP0("USB Control Init\n");
 	OTHERS_REG |= (1<<16);	/*unmask usb signal */

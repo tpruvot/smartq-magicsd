@@ -74,7 +74,7 @@ static unsigned short gbase[] =
 
 static unsigned long gpio_base = 0x7f008000;
 
-struct fbinfo *fbi = 0;
+static struct fbinfo *fbi = 0;
 
 #define readl(a) (*(volatile unsigned int *)(a))
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
@@ -250,14 +250,13 @@ int sd_card_block_read_smartq(unsigned char *buf, unsigned long start512, int bl
 static int usb_inited=0;
 static int usb_init(void)
 {
+	fbi = fb_init();
+
 	usb_inited = s3c_usbctl_init();
 	
-	fbi = fb_init();
-	led_set(0);
 	//fb_clear(fbi);
-	fb_puthex(fbi,(uint32)fbi);
-	fb_putc(fbi,' ');
-	fb_puthex(fbi,(uint32)usb_inited);
+	fb_printf(fbi,"%x %d ",(uint32)fbi, usb_inited);
+	led_set(0);
 	
 	return usb_inited;
 }

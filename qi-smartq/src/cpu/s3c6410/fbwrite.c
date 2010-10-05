@@ -248,7 +248,7 @@ void fb_puthex(struct fbinfo *fbi, uint32 val)
 	fb_putsinglehex(fbi, (val >> 0) & 0xf);
 }
 
-/*
+
 // Write a string to the framebuffer.
 void fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 {
@@ -300,7 +300,7 @@ void fb_printf(struct fbinfo *fbi, const char *fmt, ...)
 	}
 	va_end(args);
 }
-*/
+/**/
 
 // Clear the screen.
 void fb_clear(struct fbinfo *fbi)
@@ -495,20 +495,17 @@ struct fbinfo * fb_init(void)
 	//fbi->x = fbi->y = 6;
 	//blit_char(fbi, 'O');
 	//blit_char(fbi, 'K');
-	//fb_puts(fbi, "MagicSD Qi USB v1.0");
 	
-	for (val=30;val<256;val++) {
-		//if (val % 85 == 0) {
-		//	fbi->x =40;
-		//	fbi->y++;
-		//}
-		fb_putc(fbi, val);
-	}
+	//for (val=30;val<256;val++) {
+	//	fb_putc(fbi, val);
+	//}
 
 	writel(0x00000113,S3C_VIDCON0); //enable 0bxx11 | CLK_SRC | CKL_DIV
 	//ou 0x13 | (0 << 2) | (4 << 6) |  (1 << 5)|  (1 << 16)
 
-	fbi->x = fbi->y = 2;
+	fbi->x = fbi->y = 0;
+	
+	fb_puts(fbi, "MagicSD Qi USB v1.0\n");
 	
 	//fb_puthex(fbi,fbi->x);
 	
@@ -522,4 +519,9 @@ struct fbinfo * fb_init(void)
 //		   , fbi->fb, fbi->scrx, fbi->scry, fbi->maxx, fbi->maxy);
 
 	return fbi;
+}
+
+struct fbinfo * fb_get(void)
+{
+	return &fbi_store;
 }
