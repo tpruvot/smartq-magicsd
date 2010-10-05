@@ -439,15 +439,14 @@ fb_init(struct fbinfo *fbi)
 	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
 	
-	writel(0x00000000,S3C_VIDTCON0);
+	writel(0x00110759,S3C_VIDTCON0);
 	//writel(0x00130909,S3C_VIDTCON1); //Synch 00|
-	writel(0x00000000,S3C_VIDTCON1); //Synch 00|
+	writel(0x005f6276,S3C_VIDTCON1); //Synch 00|
 	
 	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
-	//writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 	writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 
-	writel(0x00000000,S3C_VIDTCON3);
+	//writel(0x00000000,S3C_VIDTCON3);
 
 	//writel(0x00010015,S3C_WINCON0);
 	writel(0x00000000,S3C_WINCON0);
@@ -493,7 +492,7 @@ fb_init(struct fbinfo *fbi)
 
 	//memset16(fbi->fb + videoW*18, RED,  videoW*20); 
 	
-	fbi->x =40;
+	fbi->x =10;
 	fbi->y =8;
 	//blit_char(fbi, 'O');
 	//blit_char(fbi, 'K');
