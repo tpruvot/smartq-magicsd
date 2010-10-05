@@ -42,15 +42,23 @@
 #define videoW 800
 #define videoH 480
 
-#define RGB(r,g,b) (r&0x1f<<11) | (g&0x3c<<6) | (b&0x1f)
+//#define RGB565(r,g,b) (r&0x1f<<11) | (g&0x3c<<6) | (b&0x1f)
+#define RGB555(r,g,b) (r&0x1f<<10) | (g&0x1f<<5) | (b&0x1f)
+
+//16 bpp colors
+#define BLACK 0x0000
+#define WHITE 0x7fff
 
 //16 bpp colors (RGB 5/6/5):
-#define WHITE 0xffff
-#define RED   0xf800
-//#define GREEN 0x07e0
-#define GREEN 0x05e0
-#define BLUE  0x001f
-#define BLACK 0x0000
+//#define RED   0xf800
+//#define GREEN 0x07e0//#define GREEN 0x05e0
+//#define BLUE  0x001f
+
+//16 bpp colors (RGB 5/5/5):
+#define RED   0x7C00
+#define GREEN 0x03E0
+#define BLUE  0x001F
+
 //or on 1 byte (memset)
 //0xff : white, 0xf0 : red, 0x3c : blue, 0x0f : green, 0x77 : light green, 0x55 : gray
 
@@ -436,24 +444,24 @@ struct fbinfo * fb_init(void)
 	writel(0x00000640,		S3C_VIDW03ADD2);
 	*/
 	
-	//writel(0x00000113,S3C_VIDCON0); set a end of proc
+	//writel(0x00000113,S3C_VIDCON0); set at end of proc
+
 	//writel(0x01d0c0e0,S3C_VIDCON1); //Acer M900
 	writel( 0x0000050,S3C_VIDCON1);
 	writel(0x00000380,S3C_VIDCON2);
 	
-	writel(0x00130909,S3C_VIDTCON0);
-	writel(0x005f6276,S3C_VIDTCON1); //Synch 00|
+	writel(0x00130909,S3C_VIDTCON0); //Synch Pos V
+	writel(0x005f6276,S3C_VIDTCON1); //Synch Pos H
 	
 	//writel(0x18f9df,S3C_VIDTCON2); //480x800  1 1101 1111  011 0001 1111
 	writel(0x0efb1f,S3C_VIDTCON2);   //800x480 11 0001 1111  001 1101 1111
 
-	//writel(0x00000000,S3C_VIDTCON3);
-
 	//writel(0x00010015,S3C_WINCON0);
 	writel(0x00000000,S3C_WINCON0);
-	writel(0x00010015,S3C_WINCON1);
+	//writel(0x00010015,S3C_WINCON1); 565 RGB
+	writel(0x00010019,S3C_WINCON1); //1555 ARGB
 	writel(0x00000000,S3C_WINCON2);
-	writel(0x00000000,S3C_WINCON3);	
+	writel(0x00000000,S3C_WINCON3);
 	writel(0x00000000,S3C_WINCON4);
 	
 	writel(0x000810,S3C_VIDOSD1A); //X:Y LeftTop
@@ -467,7 +475,7 @@ struct fbinfo * fb_init(void)
 	
 	//memset16(fbi->fb, RGB(0xff,0xff,0xff), videoW*videoH);
 	
-	memset16(fbi->fb, BLUE, videoW*videoH); 
+	memset16(fbi->fb, RED, videoW*videoH); 
 
 	for (val=0;val<videoH;val++) {
 		memset16(fbi->fb + (val*videoW) + val, 0, 1);
