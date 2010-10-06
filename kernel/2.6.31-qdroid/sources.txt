@@ -1,7 +1,0 @@
-Got from git://gitorious.org/qdroid/qdorid-kernel-2-6-31.git 
- 
-New git : http://gitorious.org/~tpruvot/qdroid/magicsd-qdroid-kernel-2-6-31
-
-Status :  Booting, display kernel messages in debug Mode (but USB Port 1 not working)
-
-17 June : GPIO fixed and working, USB Port 2 working (internal one)

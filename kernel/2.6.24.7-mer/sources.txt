@@ -1,4 +1,0 @@
-Forked from http://gitorious.org/mer-smartq/mer-smartq-kernel/commits/one-true-smaRTq
-
-New one : Go to http://gitorious.org/~tpruvot/mer-smartq/smartq-kernel/commits/MagicSD
-

@@ -1,9 +1,0 @@
-set your cross compiler path in ./compile.sh and execute to make u-boot image
-
---tpr 06162010
-
-To build for smartQ:
-
-make smdk6410_config
-
---dfc 11212009

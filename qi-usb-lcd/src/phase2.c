@@ -378,9 +378,9 @@ static void try_this_kernel(void)
 	partition_offset_blocks = 0;
 	partition_length_blocks = 0;
 
-	puts("\nTrying kernel: ");
-	puts(this_kernel->name);
-	puts("\n");
+//	puts("\nTrying kernel: ");
+//	puts(this_kernel->name);
+//	puts("\n");
 
 	indicate(UI_IND_MOUNT_PART);
 
@@ -396,9 +396,9 @@ static void try_this_kernel(void)
 	if (ret != -1) {
 		/* -2 (mount fail) should make us give up too */
 		if (ret >= 0) {
-			puts("    (Skipping on finding ");
-			puts(this_board->noboot);
-			puts(")\n");
+//			puts("    (Skipping on finding ");
+//			puts(this_board->noboot);
+//			puts(")\n");
 			indicate(UI_IND_SKIPPING);
 		}
 		return;
@@ -467,14 +467,14 @@ void bootloader_second_phase(void)
 
 	/* we try the possible kernels for this board in order */
 
-	udelay(100000);
-	led_set(3);
+	udelay(200000);
+//	led_set(3);
 	for (this_kernel = this_board->kernel_source; this_kernel->name; this_kernel++)
 		try_this_kernel();
 
 	/* none of the kernels worked out */
 
-	puts("\nNo usable kernel image found\n");
-	led_blink(1, 0);
-	poweroff();
+//	puts("\nNo usable kernel image found\n");
+//	led_blink(1, 0);
+//	poweroff();
 }

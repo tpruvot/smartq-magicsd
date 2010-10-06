@@ -36,9 +36,9 @@ export CROSS_COMPILE AD LD CC OBJCOPY OBJDUMP MKUDFU
 KERNEL=/var/git/mer-smartq-kernel
 export KERNEL
 
-KERNEL_CMDLINE="rootwait root=/dev/ram debug nosplash"
+KERNEL_CMDLINE="rootwait root=/dev/ram0 debug nosplash"
 
 #to force a kernel containing an initrd (set in kernel .config)
-#KERNEL_IMAGE=/var/git/smartq/qi-smartq/zImage
-KERNEL_IMAGE=/var/git/mer-smartq-kernel/zImageSD
+KERNEL_IMAGE=/var/git/smartq_qi/qi-usb-lcd/zImage
+#KERNEL_IMAGE=/var/git/mer-smartq-kernel/zImageSD
 export KERNEL_IMAGE

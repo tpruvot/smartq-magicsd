@@ -1,1 +1,0 @@
-../initramfs/content/usr/bin/format-sd.sh

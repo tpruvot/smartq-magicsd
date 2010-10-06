@@ -65,7 +65,7 @@
 //static const int MAXOUTBUF = 2*1024;
 //static const int PADOUTBUF = 32;
 
-static struct fbinfo fbi_store;
+//static struct fbinfo fbi_store;
 
 #define writel(v,a) (*(volatile unsigned int *)(a) = (v))
 #define readl(a) (*(volatile unsigned int *)(a)) 
@@ -151,8 +151,6 @@ void blit_char(struct fbinfo *fbi, unsigned char c)
 		led_blink(2,3);
 		return;
 	}
-	//if (fbi->fb == 0)
-	//	return;
 	
 	#if FULL_ASCII == 0
 		if (c & 0x80) return;
@@ -203,6 +201,8 @@ void fb_putc(struct fbinfo *fbi, char c)
 		goNewLine(fbi);
 		return;
 	}
+	if (!fbi)
+		return;
 	blit_char(fbi, c);
 	fbi->x++;
 	if (fbi->x >= fbi->maxx)
@@ -353,18 +353,19 @@ void gpio_cfg_vid_pin(unsigned int con, uint32 pin, uint32 func)
 	}
 }
 */
-
+#define FBMEM   0x5ff00000
+#define FBSTORE 0x5ffc0000
 // Initialize fbi structure and display.
 struct fbinfo * fb_init(void)
 {
 	struct fbinfo * fbi;
 	uint32 val;
-	uint32 FBMEM = 0x5d000000;
+	uint32 fb = FBMEM;
 	
 	//memset(&fbi_store, 0, sizeof(fbi_store));
-	fbi = &fbi_store;
+	fbi = (struct fbinfo *) FBSTORE;//&fbi_store;
 
-	fbi->fb = (uint16 *) FBMEM;
+	fbi->fb = (uint16 *) fb;
 	
 	fbi->x = fbi->y = 0;
 	fbi->scrx = videoW;
@@ -417,28 +418,28 @@ struct fbinfo * fb_init(void)
 	//gpio_cfg_vid_pin(S3C_SPCON, 12, 0b01);
 		
 	//val = (0xbb800*1);
-	writel(FBMEM,			S3C_VIDW01ADD0B0);
+	writel(fb,				S3C_VIDW01ADD0B0);
 	writel(fbi->memsz,		S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480)) : 0x0bb800
 	//writel(  0x05dc00,		S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480))
-	writel(0x00000320,		S3C_VIDW01ADD2); //PAGEWIDTH_F (1600) = 800*2
+	writel(0x00000640,		S3C_VIDW01ADD2); //PAGEWIDTH_F (1600) = 800*2
 
 	/*
 	val = (0xbb800*1);
-	writel(FBMEM+val,		S3C_VIDW01ADD0B0);
+	writel(fb+val,		S3C_VIDW01ADD0B0);
 	writel(  0x0bb800+val, 	S3C_VIDW01ADD1B0);  //VBASE LOW = VBASE UP(0) + (PAGEWIDTH(800)+OFFSIZE(0)) x (LINEVAL+1(480))
 
 	val = (0xbb800*2);
-	writel(FBMEM+val, 		S3C_VIDW00ADD0B0);
+	writel(fb+val, 		S3C_VIDW00ADD0B0);
 	writel(  0x000000+val, 	S3C_VIDW00ADD1B0);
 	writel(0x00000640,		S3C_VIDW00ADD2);
 
 	val = (0xbb800*3);
-	writel(FBMEM+val,		S3C_VIDW02ADD0);
+	writel(fb+val,		S3C_VIDW02ADD0);
 	writel(0x0bb800+val, 	S3C_VIDW02ADD1);
 	writel(0x00000640,		S3C_VIDW02ADD2);
 
 	val = (0xbb800*4);
-	writel(FBMEM+val,		S3C_VIDW03ADD0);
+	writel(fb+val,		S3C_VIDW03ADD0);
 	writel(0x0bb800+val, 	S3C_VIDW03ADD1);
 	writel(0x00000640,		S3C_VIDW03ADD2);
 	*/
@@ -509,7 +510,7 @@ struct fbinfo * fb_init(void)
 
 	fbi->x = fbi->y = 0;
 	
-	fb_puts(fbi, "MagicSD Qi USB v1.0\n");
+	fb_puts(fbi, "MagicSD Qi USB v1.01\n");
 	
 	//fb_puthex(fbi,fbi->x);
 	
@@ -527,5 +528,5 @@ struct fbinfo * fb_init(void)
 
 struct fbinfo * fb_get(void)
 {
-	return &fbi_store;
+	return (struct fbinfo *) FBSTORE;//&fbi_store;
 }
