@@ -216,14 +216,14 @@ static int is_this_board_smartq(void)
 {
 	/* FIXME: find something SmartQ specific */
 	set_lcd_backlight(1);
-	led_set(3);
+	led_set(2);
 	return 1;
 }
 
-static void putc_smdk6410(char c)
+static void putc_smartq(char c)
 {
-	//if (fbi!=0)
-	//	fb_putc(fbi, c);
+//	if (fbi!=0)
+//	fb_putc(fbi, c);
 	serial_putc_s3c64xx(SMDK6410_DEBUG_UART, c);
 }
 
@@ -251,11 +251,13 @@ static int usb_inited=0;
 static int usb_init(void)
 {
 	fbi = fb_init();
+//	fbi = fb_get();
 
 	usb_inited = s3c_usbctl_init();
+	led_set(3);
 
 	//fb_clear(fbi);
-	fb_printf(fbi,"FB: %x ",(uint32)fbi->fb);
+	fb_printf(fbi,"FB:%x ",(uint32)fbi->fb);
 	led_set(0);
 
 	return usb_inited;
@@ -325,7 +327,7 @@ const struct board_api board_api_smartq = {
 	.linux_tag_placement = 0x50000000 + 0x100,
 	.get_board_variant = get_board_variant_smartq,
 	.is_this_board = is_this_board_smartq,
-	.putc = putc_smdk6410,
+	.putc = putc_smartq,
 	.commandline_board = "loglevel=6 rootwait s3cfb.backlight=80 ", //backlight setting for future kernel
 	.commandline_board_debug = "console=ttySAC0,115200n8 ignore_loglevel ",
 	.noboot = "boot/noboot-SMDK6410",
@@ -336,6 +338,7 @@ const struct board_api board_api_smartq = {
 			.block_init = usb_init,
 			.block_read = usb_read,
 			.filesystem = FS_RAW,
+			.commandline_append = " "
 		},
 		[1] = {
 			.name = "SD Card rootfs P1",

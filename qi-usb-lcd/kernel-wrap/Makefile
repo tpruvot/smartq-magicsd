@@ -1,6 +1,6 @@
 CROSS_COMPILE ?= arm-linux-
 
-KERNEL_CMDLINE ?= root=/dev/ram rw init=/sbin/init console=s3cfb nosplash debug
+KERNEL_CMDLINE ?= root=/dev/ram0 rw init=/bin/sh console=s3cfb nosplash debug
 KERNEL_IMAGE ?= ${KERNEL}/arch/arm/boot/zImage
 
 SRCS	= boot.S tags.S kernel.S wrap.S
